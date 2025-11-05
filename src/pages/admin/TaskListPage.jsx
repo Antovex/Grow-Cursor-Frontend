@@ -34,6 +34,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import api from '../../lib/api.js';
 
+
 const ITEM_HEIGHT = 44;
 const ITEM_PADDING_TOP = 8;
 const MenuProps = {
@@ -143,7 +144,10 @@ export default function TaskListPage() {
   useEffect(() => {
     api
       .get('/assignments', { params: { sortBy: 'createdAt', sortOrder: 'desc' } })
-      .then(({ data }) => setItems(data.items || []))
+      .then(({ data }) => {
+        const list = Array.isArray(data) ? data : (data.items || data.assignments || []);
+        setItems(list);
+})
       .catch(() => alert('Failed to fetch tasks.'));
   }, []);
 
