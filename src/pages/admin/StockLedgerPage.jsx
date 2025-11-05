@@ -114,7 +114,7 @@ export default function StockLedgerPage() {
               </IconButton>
             </Badge>
             <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <FilterListIcon fontSize="small" /> Stock Ledger
+              <FilterListIcon fontSize="small" /> R-C Tracker
             </Typography>
             {loading && <LinearProgress sx={{ width: 120, height: 6, borderRadius: 1 }} />}
           </Stack>

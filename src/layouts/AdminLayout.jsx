@@ -38,6 +38,7 @@ import ManageCategoriesPage from '../pages/admin/ManageCategoriesPage.jsx';
 import ListingsSummaryPage from '../pages/admin/ListingsSummaryPage.jsx';
 import UserCredentialsPage from '../pages/admin/UserCredentialsPage.jsx';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import TaskIcon from '@mui/icons-material/Task';
 
 import TaskListPage from '../pages/admin/TaskListPage.jsx';
 import StockLedgerPage from '../pages/admin/StockLedgerPage.jsx';
@@ -70,26 +71,6 @@ export default function AdminLayout({ user, onLogout }) {
         ) : null}
 
         {isListingAdmin || isSuper ? (
-  <>
-    <ListItem disablePadding>
-      <ListItemButton component={Link} to="/admin/task-list" onClick={() => setMobileOpen(false)}>
-        <ListItemIcon><Inventory2Icon /></ListItemIcon>
-        <ListItemText primary="Task List" />
-      </ListItemButton>
-    </ListItem>
-
-    <ListItem disablePadding>
-      <ListItemButton component={Link} to="/admin/stock-ledger" onClick={() => setMobileOpen(false)}>
-        <ListItemIcon><Inventory2Icon /></ListItemIcon>
-        <ListItemText primary="Stock Ledger" />
-      </ListItemButton>
-    </ListItem>
-  </>
-) : null}
-
-
-        
-        {isListingAdmin || isSuper ? (
           <>
             <ListItem disablePadding>
               <ListItemButton onClick={() => setListingMenuOpen((open) => !open)} sx={{ justifyContent: 'space-between' }}>
@@ -113,6 +94,29 @@ export default function AdminLayout({ user, onLogout }) {
             </Collapse>
           </>
         ) : null}
+        
+
+        {isListingAdmin || isSuper ? (
+  <>
+    <ListItem disablePadding>
+      <ListItemButton component={Link} to="/admin/task-list" onClick={() => setMobileOpen(false)}>
+        <ListItemIcon><TaskIcon/></ListItemIcon>
+        <ListItemText primary="Task List" />
+      </ListItemButton>
+    </ListItem>
+
+    <ListItem disablePadding>
+      <ListItemButton component={Link} to="/admin/stock-ledger" onClick={() => setMobileOpen(false)}>
+        <ListItemIcon><InsightsIcon /></ListItemIcon>
+        <ListItemText primary="R-C Tracker" />
+      </ListItemButton>
+    </ListItem>
+  </>
+) : null}
+
+
+        
+        
         {isProductAdmin || isSuper ? (
           <>
             <ListItem disablePadding>

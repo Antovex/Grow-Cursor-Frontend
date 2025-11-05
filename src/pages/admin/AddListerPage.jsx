@@ -1,100 +1,82 @@
-import { useMemo, useState, useEffect } from 'react';
-import { Box, Button, Paper, Stack, TextField, Typography, FormControl, InputLabel, Select, MenuItem, Snackbar, Alert } from '@mui/material';
+// src/pages/admin/AddListerPage.jsx
+import { useMemo, useState } from 'react';
+import {
+  Box, Button, Paper, Stack, TextField, Typography,
+  FormControl, InputLabel, Select, MenuItem, Snackbar, Alert
+} from '@mui/material';
 import api from '../../lib/api.js';
 
 export default function AddListerPage() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('lister');
+
+  const [errors, setErrors] = useState({ email: '', username: '' });
   const [msg, setMsg] = useState('');
   const [showCreds, setShowCreds] = useState(false);
   const [creds, setCreds] = useState({ email: '', username: '', password: '', role: 'lister' });
-  const [errors, setErrors] = useState({ email: '', username: '' });
-  const [checking, setChecking] = useState({ email: false, username: false });
-  
+  const [submitting, setSubmitting] = useState(false);
+
   const currentUser = useMemo(() => {
     const raw = localStorage.getItem('user');
     return raw ? JSON.parse(raw) : null;
   }, []);
   const isSuper = currentUser?.role === 'superadmin';
   const isListingAdmin = currentUser?.role === 'listingadmin';
-  const [role, setRole] = useState('lister');
 
-  // Check if email exists
-  const checkEmail = async (email) => {
-    if (!email) return;
-    setChecking(prev => ({ ...prev, email: true }));
-    try {
-      const response = await api.get(`/users/check-exists?email=${email}`);
-      setErrors(prev => ({ ...prev, email: response.data.exists ? 'Email already exists' : '' }));
-    } catch (e) {
-      console.error('Error checking email:', e);
-    }
-    setChecking(prev => ({ ...prev, email: false }));
-  };
-
-  // Check if username exists
-  const checkUsername = async (username) => {
-    if (!username) return;
-    setChecking(prev => ({ ...prev, username: true }));
-    try {
-      const response = await api.get(`/users/check-exists?username=${username}`);
-      setErrors(prev => ({ ...prev, username: response.data.exists ? 'Username already exists' : '' }));
-    } catch (e) {
-      console.error('Error checking username:', e);
-    }
-    setChecking(prev => ({ ...prev, username: false }));
-  };
-
-  // Debounced email check
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (email) checkEmail(email);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [email]);
-
-  // Debounced username check
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (username) checkUsername(username);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [username]);
+  const clearFieldError = (field) =>
+    setErrors(prev => ({ ...prev, [field]: '' }));
 
   const handleCreate = async (e) => {
     e.preventDefault();
     setMsg('');
-
-    // Final validation before submission
-    if (errors.email || errors.username) {
-      setMsg('Please fix the errors before submitting');
-      return;
-    }
+    setErrors({ email: '', username: '' });
+    setSubmitting(true);
 
     try {
       const newRole = isSuper ? role : 'lister';
-      const response = await api.post('/users', { email, username, password, newUserRole: newRole });
+      const res = await api.post('/users', {
+        email, username, password, newUserRole: newRole
+      });
+
       const roleNames = { productadmin: 'Product Admin', listingadmin: 'Listing Admin', lister: 'Lister' };
       setMsg(`${roleNames[newRole]} created`);
-      
-      // Store credentials if response includes them (superadmin only)
-      if (response.data.credentials) {
-        const savedCreds = localStorage.getItem('userCredentials');
-        const existingCreds = savedCreds ? JSON.parse(savedCreds) : [];
-        existingCreds.push(response.data.credentials);
-        localStorage.setItem('userCredentials', JSON.stringify(existingCreds));
+
+      // store credentials for superadmin convenience
+      if (res.data.credentials) {
+        const saved = localStorage.getItem('userCredentials');
+        const list = saved ? JSON.parse(saved) : [];
+        list.push(res.data.credentials);
+        localStorage.setItem('userCredentials', JSON.stringify(list));
       }
-      
+
       setCreds({ email, username, password, role: newRole });
       setShowCreds(true);
+
+      // reset form
       setEmail('');
       setUsername('');
       setPassword('');
       setRole('lister');
-      setErrors({ email: '', username: '' });
-    } catch (e) {
-      setMsg(e?.response?.data?.error || 'Failed to create user');
+    } catch (err) {
+      const status = err?.response?.status;
+      const message = err?.response?.data?.error || 'Failed to create user';
+
+      if (status === 409) {
+        // Backend sends "Email already in use" or "Username already in use"
+        if (/email/i.test(message)) {
+          setErrors(prev => ({ ...prev, email: message }));
+        } else if (/username/i.test(message)) {
+          setErrors(prev => ({ ...prev, username: message }));
+        } else {
+          setMsg(message);
+        }
+      } else {
+        setMsg(message);
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -102,33 +84,34 @@ export default function AddListerPage() {
     <Paper sx={{ p: 3, maxWidth: 520 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>Add User</Typography>
       <Stack spacing={2} component="form" onSubmit={handleCreate}>
-        <TextField 
-          label="Email" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
+        <TextField
+          label="Email"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
           required
           error={!!errors.email}
-          helperText={checking.email ? 'Checking email...' : errors.email}
-          disabled={checking.email}
+          helperText={errors.email || ' '}
+          disabled={submitting}
         />
-        <TextField 
-          label="Username" 
-          value={username} 
-          onChange={(e) => setUsername(e.target.value)} 
+        <TextField
+          label="Username"
+          value={username}
+          onChange={(e) => { setUsername(e.target.value); clearFieldError('username'); }}
           required
           error={!!errors.username}
-          helperText={checking.username ? 'Checking username...' : errors.username}
-          disabled={checking.username}
+          helperText={errors.username || ' '}
+          disabled={submitting}
         />
-        <TextField 
-          label="Password" 
-          type="password" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
+        <TextField
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           required
+          disabled={submitting}
         />
         {isSuper ? (
-          <FormControl>
+          <FormControl disabled={submitting}>
             <InputLabel>Role</InputLabel>
             <Select label="Role" value={role} onChange={(e) => setRole(e.target.value)}>
               <MenuItem value="productadmin">Product Research Admin</MenuItem>
@@ -140,11 +123,17 @@ export default function AddListerPage() {
           <Typography variant="body2" color="text.secondary">Creating Lister</Typography>
         ) : null}
         <Box>
-          <Button type="submit" variant="contained">Create</Button>
+          <Button type="submit" variant="contained" disabled={submitting}>Create</Button>
         </Box>
-        {msg ? <Typography color="success.main">{msg}</Typography> : null}
+        {msg ? <Typography color={/created/i.test(msg) ? 'success.main' : 'error'}>{msg}</Typography> : null}
       </Stack>
-      <Snackbar open={showCreds} autoHideDuration={10000} onClose={() => setShowCreds(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+
+      <Snackbar
+        open={showCreds}
+        autoHideDuration={10000}
+        onClose={() => setShowCreds(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
         <Alert onClose={() => setShowCreds(false)} severity="info" sx={{ width: '100%' }}>
           Share these credentials securely:
           <br />Email: {creds.email}
@@ -156,5 +145,3 @@ export default function AddListerPage() {
     </Paper>
   );
 }
-
-
