@@ -1,10 +1,10 @@
 // src/pages/lister/ListerDashboard.jsx
 import { useEffect, useState } from 'react';
 import {
-  AppBar, Box, Button, Card, CardActions, CardContent, Grid,
-  Toolbar, Typography, Divider, TextField, FormControl, InputLabel,
-  Select, MenuItem, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, Stack, Alert, IconButton
+  AppBar, Box, Button, Card, CardContent, Grid,
+  Toolbar, Typography, Divider, TextField,
+  Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, Paper, Stack, Alert, IconButton, Autocomplete
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../../lib/api.js';
@@ -20,18 +20,18 @@ export default function ListerDashboard({ user, onLogout }) {
   const [ranges, setRanges] = useState({});                // { [assignmentId]: ranges[] }
   const [saving, setSaving] = useState({});                // { [assignmentId]: true/false }
 
-  // Prefetch ranges for each assignment’s subcategory
+  // Prefetch ranges for each assignment's category
   const prefetchRanges = (arrays) => {
     arrays.flat().forEach(a => {
-      if (a?.task?.subcategory?._id) {
-        loadRangesForAssignment(a._id, a.task.subcategory._id);
+      if (a?.task?.category?._id) {
+        loadRangesForAssignment(a._id, a.task.category._id);
       }
     });
   };
 
-  const loadRangesForAssignment = async (assignmentId, subcategoryId) => {
+  const loadRangesForAssignment = async (assignmentId, categoryId) => {
     try {
-      const { data } = await api.get('/ranges', { params: { subcategoryId } });
+      const { data } = await api.get('/ranges', { params: { categoryId } });
       setRanges(prev => ({ ...prev, [assignmentId]: data }));
     } catch (e) {
       console.error('Failed to load ranges', e);
@@ -85,23 +85,11 @@ export default function ListerDashboard({ user, onLogout }) {
     }
   };
 
-  const submitAssignment = async (assignmentId) => {
-    setSaving(s => ({ ...s, [assignmentId]: true }));
-    try {
-      await api.post(`/assignments/${assignmentId}/submit`);
-      await load();
-    } catch (e) {
-      console.error('Failed to submit assignment', e);
-      alert('Failed to submit assignment. Please try again.');
-    } finally {
-      setSaving(s => ({ ...s, [assignmentId]: false }));
-    }
-  };
-
   const renderCard = (a) => {
     const t = a.task || {};
     const availableRanges = ranges[a._id] || [];
     const selectedRangeId = selectedRanges[a._id] || '';
+    const selectedRangeObj = availableRanges.find(r => r._id === selectedRangeId) || null;
     const rangeQty = rangeQtys[a._id] || '';
     const isSaving = !!saving[a._id];
 
@@ -113,11 +101,10 @@ export default function ListerDashboard({ user, onLogout }) {
     }));
     const savedTotal = savedRqList.reduce((sum, rq) => sum + (rq.quantity || 0), 0);
     const remaining = Math.max(0, a.quantity - savedTotal);
-    const canSubmit = savedTotal >= a.quantity && !a.completedAt;
 
     // Lazy load ranges if not ready
-    if (t.subcategory?._id && !ranges[a._id]) {
-      loadRangesForAssignment(a._id, t.subcategory._id);
+    if (t.category?._id && !ranges[a._id]) {
+      loadRangesForAssignment(a._id, t.category._id);
     }
 
     return (
@@ -131,7 +118,7 @@ export default function ListerDashboard({ user, onLogout }) {
             Category: {t.category?.name || '-'} | Subcategory: {t.subcategory?.name || '-'}
           </Typography>
           <Typography variant="body2" sx={{ mb: 1 }}>
-            Total Qty: {a.quantity} | Distributed: {savedTotal} | Remaining: {remaining}
+            Total Qty: {a.quantity} | Remaining: {remaining}
           </Typography>
           <Typography variant="body2" sx={{ mb: 1 }}>
             Listing: {a.listingPlatform?.name} / {a.store?.name}
@@ -142,52 +129,56 @@ export default function ListerDashboard({ user, onLogout }) {
             </Typography>
           ) : null}
 
+          {a.notes && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2"><strong>Notes:</strong> {a.notes}</Typography>
+            </Alert>
+          )}
+
           {a.completedAt ? (
-            <Alert severity="success" sx={{ mb: 2 }}>Assignment Submitted!</Alert>
+            <Alert severity="success" sx={{ mb: 2 }}>Assignment Completed!</Alert>
           ) : null}
 
-          <Stack spacing={2} sx={{ mb: 2 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Select Range</InputLabel>
-              <Select
-                label="Select Range"
-                value={selectedRangeId}
-                onChange={(e) => setSelectedRanges(prev => ({ ...prev, [a._id]: e.target.value }))}
-                disabled={isSaving || !!a.completedAt}
-              >
-                {availableRanges.map((r) => (
-                  <MenuItem key={r._id} value={r._id}>{r.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Stack direction="row" spacing={1}>
-              <TextField
+          {!a.completedAt && (
+            <Stack spacing={2} sx={{ mb: 2 }}>
+              <Autocomplete
                 size="small"
-                type="number"
-                label="Quantity"
-                value={rangeQty}
-                onChange={(e) => setRangeQtys(prev => ({ ...prev, [a._id]: e.target.value }))}
-                inputProps={{ min: 0, max: remaining }}
-                disabled={isSaving || !!a.completedAt || !selectedRangeId}
-                sx={{ flex: 1 }}
+                options={availableRanges}
+                getOptionLabel={(option) => option.name}
+                value={selectedRangeObj}
+                onChange={(e, newValue) => setSelectedRanges(prev => ({ ...prev, [a._id]: newValue?._id || '' }))}
+                disabled={isSaving}
+                renderInput={(params) => <TextField {...params} label="Select Range" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
               />
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => addRangeQuantity(a._id)}
-                disabled={
-                  isSaving ||
-                  !!a.completedAt ||
-                  !selectedRangeId ||
-                  !rangeQty ||
-                  Number(rangeQty) <= 0 ||
-                  Number(rangeQty) > remaining
-                }
-              >
-                {isSaving ? 'Saving...' : 'Add'}
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Quantity"
+                  value={rangeQty}
+                  onChange={(e) => setRangeQtys(prev => ({ ...prev, [a._id]: e.target.value }))}
+                  inputProps={{ min: 0, max: remaining }}
+                  disabled={isSaving || !selectedRangeId}
+                  sx={{ flex: 1 }}
+                />
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => addRangeQuantity(a._id)}
+                  disabled={
+                    isSaving ||
+                    !selectedRangeId ||
+                    !rangeQty ||
+                    Number(rangeQty) <= 0 ||
+                    Number(rangeQty) > remaining
+                  }
+                >
+                  {isSaving ? 'Saving...' : 'Add'}
+                </Button>
+              </Stack>
             </Stack>
-          </Stack>
+          )}
 
           {savedRqList.length > 0 && (
             <TableContainer component={Paper} sx={{ mb: 2 }}>
@@ -210,13 +201,15 @@ export default function ListerDashboard({ user, onLogout }) {
                         <TableCell>{rangeName}</TableCell>
                         <TableCell>{rq.quantity}</TableCell>
                         <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => removeRangeQuantity(a._id, rq.rangeId)}
-                            disabled={isSaving || !!a.completedAt}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                          {!a.completedAt && (
+                            <IconButton
+                              size="small"
+                              onClick={() => removeRangeQuantity(a._id, rq.rangeId)}
+                              disabled={isSaving}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -225,27 +218,7 @@ export default function ListerDashboard({ user, onLogout }) {
               </Table>
             </TableContainer>
           )}
-
-          {savedRqList.length > 0 && (
-            <Typography variant="body2" sx={{ mb: 1, mt: 2 }}>
-              Total Distributed: {savedTotal} / {a.quantity}
-            </Typography>
-          )}
         </CardContent>
-
-        <CardActions>
-          {canSubmit ? (
-            <Button
-              size="small"
-              variant="contained"
-              color="success"
-              onClick={() => submitAssignment(a._id)}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Submitting…' : 'Submit Assignment'}
-            </Button>
-          ) : null}
-        </CardActions>
       </Card>
     );
   };

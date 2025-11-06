@@ -119,12 +119,7 @@ export default function AdminLayout({ user, onLogout }) {
         
         {isProductAdmin || isSuper ? (
           <>
-            <ListItem disablePadding>
-              <ListItemButton component={Link} to="/admin/ranges" onClick={() => setMobileOpen(false)}>
-                <ListItemIcon><CategoryIcon /></ListItemIcon>
-                <ListItemText primary="Manage Ranges" />
-              </ListItemButton>
-            </ListItem>
+            
             <ListItem disablePadding>
               <ListItemButton component={Link} to="/admin/categories" onClick={() => setMobileOpen(false)}>
                 <ListItemIcon><CategoryIcon /></ListItemIcon>

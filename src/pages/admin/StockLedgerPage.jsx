@@ -89,9 +89,8 @@ export default function StockLedgerPage() {
   }, [rows, filters.category, filters.range]);
 
   const totals = useMemo(() => {
-    const a = filtered.reduce((acc, r) => acc + (Number(r.totalAssigned) || 0), 0);
     const c = filtered.reduce((acc, r) => acc + (Number(r.totalCompleted) || 0), 0);
-    return { assigned: a, completed: c, pending: Math.max(0, a - c) };
+    return { completed: c };
   }, [filtered]);
 
   const activeCount = useMemo(() => {
@@ -234,9 +233,7 @@ export default function StockLedgerPage() {
       {/* Totals */}
       <Paper sx={{ p: 1.5, mb: 1.5 }}>
         <Stack direction="row" gap={2} flexWrap="wrap">
-          <Chip label={`Assigned: ${totals.assigned}`} />
           <Chip label={`Completed: ${totals.completed}`} />
-          <Chip color="warning" label={`Pending: ${totals.pending}`} />
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Showing <b>{filtered.length} </b>groups
           </Typography>
@@ -254,9 +251,7 @@ export default function StockLedgerPage() {
               <TableCell>Category</TableCell>
               <TableCell>Subcategory</TableCell>
               <TableCell>Range</TableCell>
-              <TableCell align="right">Assigned</TableCell>
-              <TableCell align="right">Completed</TableCell>
-              <TableCell align="right">Pending</TableCell>
+              <TableCell align="right">Listings Made</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -268,17 +263,13 @@ export default function StockLedgerPage() {
                 <TableCell>{r.category || '—'}</TableCell>
                 <TableCell>{r.subcategory || '—'}</TableCell>
                 <TableCell>{r.range || '—'}</TableCell>
-                <TableCell align="right">{r.totalAssigned}</TableCell>
                 <TableCell align="right">{r.totalCompleted}</TableCell>
-                <TableCell align="right"><b>{r.pending}</b></TableCell>
               </TableRow>
             ))}
             {/* Totals row */}
             <TableRow>
               <TableCell colSpan={6} align="right"><b>Totals</b></TableCell>
-              <TableCell align="right"><b>{totals.assigned}</b></TableCell>
               <TableCell align="right"><b>{totals.completed}</b></TableCell>
-              <TableCell align="right"><b>{totals.pending}</b></TableCell>
             </TableRow>
           </TableBody>
         </Table>

@@ -18,7 +18,7 @@ export default function ManageCategoriesPage() {
   
   // Ranges
   const [ranges, setRanges] = useState([]);
-  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
+  const [selectedCategoryForRange, setSelectedCategoryForRange] = useState('');
   const [rangeName, setRangeName] = useState('');
 
   // Load categories
@@ -33,19 +33,18 @@ export default function ManageCategoriesPage() {
         .then(({ data }) => setSubcategories(data));
     } else {
       setSubcategories([]);
-      setSelectedSubcategoryId('');
     }
   }, [selectedCategoryId]);
 
-  // Load ranges when subcategory is selected
+  // Load ranges when category is selected for ranges section
   useEffect(() => {
-    if (selectedSubcategoryId) {
-      api.get('/ranges', { params: { subcategoryId: selectedSubcategoryId } })
+    if (selectedCategoryForRange) {
+      api.get('/ranges', { params: { categoryId: selectedCategoryForRange } })
         .then(({ data }) => setRanges(data));
     } else {
       setRanges([]);
     }
-  }, [selectedSubcategoryId]);
+  }, [selectedCategoryForRange]);
 
   const addCategory = async (e) => {
     e.preventDefault();
@@ -66,10 +65,10 @@ export default function ManageCategoriesPage() {
 
   const addRange = async (e) => {
     e.preventDefault();
-    if (!selectedSubcategoryId) return;
-    await api.post('/ranges', { name: rangeName, subcategoryId: selectedSubcategoryId });
+    if (!selectedCategoryForRange) return;
+    await api.post('/ranges', { name: rangeName, categoryId: selectedCategoryForRange });
     setRangeName('');
-    const { data } = await api.get('/ranges', { params: { subcategoryId: selectedSubcategoryId } });
+    const { data } = await api.get('/ranges', { params: { categoryId: selectedCategoryForRange } });
     setRanges(data);
   };
 
@@ -164,31 +163,16 @@ export default function ManageCategoriesPage() {
       <Paper sx={{ p: 2 }}>
         <Typography variant="subtitle1" sx={{ mb: 2 }}>Ranges</Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} component="form" onSubmit={addRange}>
-          <FormControl sx={{ minWidth: 200 }}>
+          <FormControl sx={{ minWidth: 240 }}>
             <InputLabel>Category</InputLabel>
             <Select
               label="Category"
-              value={selectedCategoryId}
-              onChange={(e) => {
-                setSelectedCategoryId(e.target.value);
-                setSelectedSubcategoryId('');
-              }}
+              value={selectedCategoryForRange}
+              onChange={(e) => setSelectedCategoryForRange(e.target.value)}
+              required
             >
               {categories.map((c) => (
                 <MenuItem key={c._id} value={c._id}>{c.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl sx={{ minWidth: 200 }} disabled={!selectedCategoryId}>
-            <InputLabel>Subcategory</InputLabel>
-            <Select
-              label="Subcategory"
-              value={selectedSubcategoryId}
-              onChange={(e) => setSelectedSubcategoryId(e.target.value)}
-              required
-            >
-              {subcategories.map((s) => (
-                <MenuItem key={s._id} value={s._id}>{s.name}</MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -199,7 +183,7 @@ export default function ManageCategoriesPage() {
             required
             sx={{ flex: 1 }}
           />
-          <Button type="submit" variant="contained" disabled={!selectedSubcategoryId}>
+          <Button type="submit" variant="contained" disabled={!selectedCategoryForRange}>
             Add Range
           </Button>
         </Stack>
@@ -208,7 +192,6 @@ export default function ManageCategoriesPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Range</TableCell>
-                <TableCell>Subcategory</TableCell>
                 <TableCell>Category</TableCell>
               </TableRow>
             </TableHead>
@@ -216,8 +199,7 @@ export default function ManageCategoriesPage() {
               {ranges.map((r) => (
                 <TableRow key={r._id}>
                   <TableCell>{r.name}</TableCell>
-                  <TableCell>{r.subcategory?.name}</TableCell>
-                  <TableCell>{r.subcategory?.category?.name}</TableCell>
+                  <TableCell>{r.category?.name}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

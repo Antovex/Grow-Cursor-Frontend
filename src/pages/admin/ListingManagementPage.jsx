@@ -19,7 +19,8 @@ export default function ListingManagementPage() {
     listerId: '',
     quantity: '',
     listingPlatformId: '',
-    storeId: ''
+    storeId: '',
+    notes: ''
   });
 
   // Load all tasks (no filter, because we want them always visible)
@@ -48,12 +49,12 @@ export default function ListingManagementPage() {
 
   const openAssign = (row) => {
     setAssigning(row);
-    setAssignForm({ listerId: '', quantity: '', listingPlatformId: '', storeId: '' });
+    setAssignForm({ listerId: '', quantity: '', listingPlatformId: '', storeId: '', notes: '' });
     setAssignOpen(true);
   };
 
   const handleAssign = async () => {
-    const { listerId, quantity, listingPlatformId, storeId } = assignForm;
+    const { listerId, quantity, listingPlatformId, storeId, notes } = assignForm;
     if (!listerId || !quantity || !listingPlatformId || !storeId) {
       alert('All fields are required');
       return;
@@ -64,7 +65,8 @@ export default function ListingManagementPage() {
       listerId,
       quantity: Number(quantity),
       listingPlatformId,
-      storeId
+      storeId,
+      notes
     });
 
     setAssignOpen(false);
@@ -169,6 +171,15 @@ export default function ListingManagementPage() {
                 ))}
               </Select>
             </FormControl>
+
+            <TextField
+              label="Notes (optional)"
+              multiline
+              rows={3}
+              value={assignForm.notes}
+              onChange={(e) => setAssignForm({ ...assignForm, notes: e.target.value })}
+              placeholder="Add any notes or instructions for the lister..."
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
