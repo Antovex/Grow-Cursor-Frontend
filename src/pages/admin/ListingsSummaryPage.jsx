@@ -14,7 +14,10 @@ import {
   Select,
   MenuItem,
   Grid,
-  TextField
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Stack
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
@@ -28,7 +31,12 @@ export default function ListingsSummaryPage() {
   const [platformId, setPlatformId] = useState('');
   const [storeId, setStoreId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [dateFilter, setDateFilter] = useState({
+    mode: 'none', // 'none' | 'single' | 'range'
+    single: '',
+    from: '',
+    to: ''
+  });
 
   // Get only listing-type platforms
   useEffect(() => {
@@ -58,15 +66,26 @@ export default function ListingsSummaryPage() {
       const params = {};
       if (platformId) params.platformId = platformId;
       if (storeId) params.storeId = storeId;
-      
+
       const res = await api.get('/assignments/analytics/listings-summary', { params });
       let filteredData = res.data || [];
 
-      // Client-side date filtering since server endpoint doesn't support it
-      if (selectedDate) {
-        const targetDate = format(selectedDate, 'yyyy-MM-dd');
-        filteredData = filteredData.filter(row => row.date === targetDate);
-      }
+      // Client-side date filtering (like TaskListPage)
+      const matchesDate = (rowDate, filter) => {
+        if (!rowDate) return false;
+        if (filter.mode === 'none') return true;
+        const ymd = rowDate;
+        if (filter.mode === 'single') return filter.single ? ymd === filter.single : true;
+        if (filter.mode === 'range') {
+          if (!filter.from && !filter.to) return true;
+          if (filter.from && ymd < filter.from) return false;
+          if (filter.to && ymd > filter.to) return false;
+          return true;
+        }
+        return true;
+      };
+
+      filteredData = filteredData.filter(row => matchesDate(row.date, dateFilter));
 
       setRows(filteredData);
     } catch (e) {
@@ -79,7 +98,8 @@ export default function ListingsSummaryPage() {
   // Fetch data on initial load and when filters change
   useEffect(() => {
     fetchSummary();
-  }, [platformId, storeId, selectedDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platformId, storeId, dateFilter]);
 
   // Process the rows data
   const processedRows = useMemo(() =>
@@ -90,9 +110,29 @@ export default function ListingsSummaryPage() {
     [rows]
   );
 
+  // Calculate totals for numeric columns
+  const totals = useMemo(() => {
+    return processedRows.reduce(
+      (acc, r) => ({
+        totalQuantity: acc.totalQuantity + (r.totalQuantity ?? 0),
+        assignmentsCount: acc.assignmentsCount + (r.assignmentsCount ?? 0),
+        numListers: acc.numListers + (r.numListers ?? 0),
+        numRanges: acc.numRanges + (r.numRanges ?? 0),
+        numCategories: acc.numCategories + (r.numCategories ?? 0),
+      }),
+      {
+        totalQuantity: 0,
+        assignmentsCount: 0,
+        numListers: 0,
+        numRanges: 0,
+        numCategories: 0,
+      }
+    );
+  }, [processedRows]);
+
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 2 }}>Listings Summary (day-wise)</Typography>
+      <Typography variant="h6" sx={{ mb: 2 }}>Listings Summary (day-wise-assigned-by the listing-admin)</Typography>
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
@@ -118,23 +158,69 @@ export default function ListingsSummaryPage() {
               </Select>
             </FormControl>
           </Grid>
+          {/* Date filter UI like TaskListPage */}
           <Grid item xs={12} sm={4} md={3}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="Filter by Date"
-                value={selectedDate}
-                onChange={(newValue) => setSelectedDate(newValue)}
-                format="dd/MM/yyyy"
-                slotProps={{
-                  textField: {
-                    size: "small",
-                    fullWidth: true,
-                  }
-                }}
-                disabled={loading}
-              />
-            </LocalizationProvider>
+            <FormControl fullWidth size="small">
+              <InputLabel id="date-mode-label">Date mode</InputLabel>
+              <Select
+                labelId="date-mode-label"
+                value={dateFilter.mode}
+                label="Date mode"
+                onChange={(e) =>
+                  setDateFilter((f) => ({ ...f, mode: e.target.value }))
+                }
+              >
+                <MenuItem value="none">None</MenuItem>
+                <MenuItem value="single">Single day</MenuItem>
+                <MenuItem value="range">Range</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
+          {dateFilter.mode === 'single' && (
+            <Grid item xs={12} sm={4} md={3}>
+              <TextField
+                size="small"
+                type="date"
+                label="Date"
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                value={dateFilter.single}
+                onChange={(e) =>
+                  setDateFilter((f) => ({ ...f, single: e.target.value }))
+                }
+              />
+            </Grid>
+          )}
+          {dateFilter.mode === 'range' && (
+            <>
+              <Grid item xs={12} sm={2} md={1.5}>
+                <TextField
+                  size="small"
+                  type="date"
+                  label="From"
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                  value={dateFilter.from}
+                  onChange={(e) =>
+                    setDateFilter((f) => ({ ...f, from: e.target.value }))
+                  }
+                />
+              </Grid>
+              <Grid item xs={12} sm={2} md={1.5}>
+                <TextField
+                  size="small"
+                  type="date"
+                  label="To"
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                  value={dateFilter.to}
+                  onChange={(e) =>
+                    setDateFilter((f) => ({ ...f, to: e.target.value }))
+                  }
+                />
+              </Grid>
+            </>
+          )}
         </Grid>
       </Paper>
 
@@ -146,11 +232,8 @@ export default function ListingsSummaryPage() {
                 <TableCell>Date (assigned)</TableCell>
                 <TableCell>Platform</TableCell>
                 <TableCell>Store</TableCell>
-                <TableCell>Total Quantity</TableCell>
-                <TableCell>Assignments Count</TableCell>
-                <TableCell>Number of Listers</TableCell>
-                <TableCell>Number of Ranges</TableCell>
-                <TableCell>Number of Categories</TableCell>
+                <TableCell>Listing Quantity</TableCell>
+                
               </TableRow>
             </TableHead>
             <TableBody>
@@ -162,12 +245,15 @@ export default function ListingsSummaryPage() {
                   <TableCell>{r.platform || '\u2014'}</TableCell>
                   <TableCell>{r.store || '\u2014'}</TableCell>
                   <TableCell>{r.totalQuantity ?? 0}</TableCell>
-                  <TableCell>{r.assignmentsCount ?? 0}</TableCell>
-                  <TableCell>{r.numListers ?? 0}</TableCell>
-                  <TableCell>{r.numRanges ?? 0}</TableCell>
-                  <TableCell>{r.numCategories ?? 0}</TableCell>
+                  
                 </TableRow>
               ))}
+              {/* Totals row */}
+              <TableRow>
+                <TableCell colSpan={3} sx={{ fontWeight: 'bold' }}>Total</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>{totals.totalQuantity}</TableCell>
+                
+              </TableRow>
             </TableBody>
           </Table>
         </Box>

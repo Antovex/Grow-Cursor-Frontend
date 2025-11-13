@@ -27,6 +27,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ProductResearchPage from '../pages/admin/ProductResearchPage.jsx';
 import AddListerPage from '../pages/admin/AddListerPage.jsx';
 import ListingManagementPage from '../pages/admin/ListingManagementPage.jsx';
@@ -46,6 +47,9 @@ import AdminTaskList from '../pages/compatibility/AdminTaskList.jsx';
 import EditorDashboard from '../pages/compatibility/EditorDashboard.jsx';
 import ProgressTrackingPage from '../pages/compatibility/ProgressTrackingPage.jsx';
 
+import FulfillmentDashboard from '../pages/admin/FulfillmentDashboard.jsx';
+import AwaitingShipmentPage from '../pages/admin/AwaitingShipmentPage.jsx';
+
 
 
 const drawerWidth = 200;
@@ -60,6 +64,7 @@ export default function AdminLayout({ user, onLogout }) {
   const isListingAdmin = user?.role === 'listingadmin';
   const isCompatibilityAdmin = user?.role === 'compatibilityadmin';
   const isCompatibilityEditor = user?.role === 'compatibilityeditor';
+  const isFulfillmentAdmin = user?.role === 'fulfillmentadmin';
 
   const drawer = (
     <div>
@@ -173,6 +178,23 @@ export default function AdminLayout({ user, onLogout }) {
           </ListItem>
         )}
 
+        {(isFulfillmentAdmin || isSuper) && (
+          <>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} to="/admin/fulfillment" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon><LocalShippingIcon /></ListItemIcon>
+                <ListItemText primary="Fulfillment Orders" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} to="/admin/awaiting-shipment" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon><LocalShippingIcon /></ListItemIcon>
+                <ListItemText primary="Awaiting Shipment" />
+              </ListItemButton>
+            </ListItem>
+          </>
+        )}
+
         {isSuper  ? (
           <>
             <ListItem disablePadding>
@@ -280,7 +302,13 @@ export default function AdminLayout({ user, onLogout }) {
           {isCompatibilityEditor && (
             <Route path="/compatibility-editor" element={<EditorDashboard />} />
           )}
-          <Route path="*" element={<Navigate to={isProductAdmin ? "/admin/research" : isListingAdmin ? "/admin/listing" : isCompatibilityAdmin ? "/admin/compatibility-tasks" : isCompatibilityEditor ? "/admin/compatibility-editor" : "/admin/research"} replace />} />
+          {(isFulfillmentAdmin || isSuper) && (
+            <>
+              <Route path="/fulfillment" element={<FulfillmentDashboard />} />
+              <Route path="/awaiting-shipment" element={<AwaitingShipmentPage />} />
+            </>
+          )}
+          <Route path="*" element={<Navigate to={isProductAdmin ? "/admin/research" : isListingAdmin ? "/admin/listing" : isCompatibilityAdmin ? "/admin/compatibility-tasks" : isCompatibilityEditor ? "/admin/compatibility-editor" : isFulfillmentAdmin ? "/admin/fulfillment" : "/admin/research"} replace />} />
         </Routes>
       </Box>
     </Box>

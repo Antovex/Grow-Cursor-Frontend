@@ -45,8 +45,10 @@ export default function AddListerPage() {
         productadmin: 'Product Admin', 
         listingadmin: 'Listing Admin', 
         compatibilityadmin: 'Compatibility Admin', 
-        compatibilityeditor: 'Compatibility Editor', 
-        lister: 'Lister' 
+        compatibilityeditor: 'Compatibility Editor',
+        fulfillmentadmin: 'Fulfillment Admin',
+        lister: 'Lister',
+        seller: 'Seller'
       };
       setMsg(`${roleNames[newRole]} created`);
 
@@ -125,7 +127,9 @@ export default function AddListerPage() {
               <MenuItem value="listingadmin">Listing Admin</MenuItem>
               <MenuItem value="compatibilityadmin">Compatibility Admin</MenuItem>
               <MenuItem value="compatibilityeditor">Compatibility Editor</MenuItem>
+              <MenuItem value="fulfillmentadmin">Fulfillment Admin</MenuItem>
               <MenuItem value="lister">Lister</MenuItem>
+              <MenuItem value="seller">Seller</MenuItem>
             </Select>
           </FormControl>
         ) : isListingAdmin ? (
