@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 import { AppBar, Toolbar, IconButton, Box, Paper, Typography, Grid, TextField, MenuItem, Button, Stack, Snackbar, Alert } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -21,9 +24,13 @@ export default function AboutMePage() {
     bankIFSC: '',
     bankName: '',
     aadharNumber: '',
-    panNumber: ''
+    panNumber: '',
+    profilePicUrl: '',
+    aadharImageUrl: '',
+    panImageUrl: ''
   });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [uploading, setUploading] = useState({ profilePic: false, aadhar: false, pan: false });
 
   useEffect(() => {
     (async () => {
@@ -41,13 +48,48 @@ export default function AboutMePage() {
           bankIFSC: p?.bankIFSC || '',
           bankName: p?.bankName || '',
           aadharNumber: p?.aadharNumber || '',
-          panNumber: p?.panNumber || ''
+          panNumber: p?.panNumber || '',
+          profilePicUrl: p?.profilePicUrl || '',
+          aadharImageUrl: p?.aadharImageUrl || '',
+          panImageUrl: p?.panImageUrl || ''
         });
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  // Cloudinary upload helper - only for images now
+  const uploadToCloudinary = async (file) => {
+    const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+    const data = new FormData();
+    data.append('file', file);
+    data.append('upload_preset', UPLOAD_PRESET);
+    
+    const res = await fetch(url, { method: 'POST', body: data });
+    const json = await res.json();
+    
+    return json.secure_url;
+  };
+
+  const handleUpload = async (e, key) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    let uploadKey;
+    if (key === 'profilePicUrl') uploadKey = 'profilePic';
+    else if (key === 'aadharImageUrl') uploadKey = 'aadhar';
+    else if (key === 'panImageUrl') uploadKey = 'pan';
+    setUploading(u => ({ ...u, [uploadKey]: true }));
+    try {
+      const url = await uploadToCloudinary(file);
+      setForm(f => ({ ...f, [key]: url }));
+      setSnackbar({ open: true, message: 'Upload successful!', severity: 'success' });
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Upload failed!', severity: 'error' });
+    } finally {
+      setUploading(u => ({ ...u, [uploadKey]: false }));
+    }
+  };
 
   const onChange = (e) => {
     const { name, value } = e.target;
@@ -91,10 +133,60 @@ export default function AboutMePage() {
       <Paper sx={{ p: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <Typography variant="h6">About Me</Typography>
-          <Button onClick={onSubmit} variant="contained" disabled={saving}>Save</Button>
+          <Button onClick={onSubmit} variant="contained" disabled={saving || uploading.profilePic || uploading.aadhar || uploading.pan}>
+            {(uploading.profilePic || uploading.aadhar || uploading.pan) ? 'Uploading...' : 'Save'}
+          </Button>
         </Stack>
         <Box component="form" onSubmit={onSubmit}>
           <Grid container spacing={2}>
+            {/* Profile Photo Upload */}
+            <Grid item xs={12} sm={6}>
+              <label>Profile Photo:</label>
+              {form.profilePicUrl ? (
+                <img src={form.profilePicUrl} alt="Profile" style={{ width: 80, height: 80, borderRadius: '50%', display: 'block', marginTop: 8 }} />
+              ) : uploading.profilePic ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <CircularProgress size={24} />
+                  <span style={{ marginLeft: 8 }}>Uploading...</span>
+                </Box>
+              ) : (
+                <input type="file" accept="image/*" onChange={e => handleUpload(e, 'profilePicUrl')} />
+              )}
+            </Grid>
+            {/* Aadhar Image Upload */}
+            <Grid item xs={12} sm={6}>
+              <label>Aadhar Card Image:</label>
+              {form.aadharImageUrl ? (
+                <Box sx={{ mt: 1 }}>
+                  <img src={form.aadharImageUrl} alt="Aadhar" style={{ width: 120, height: 80, objectFit: 'cover', display: 'block', border: '1px solid #ddd' }} />
+                  <Typography variant="caption" color="success.main">Aadhar image uploaded</Typography>
+                </Box>
+              ) : uploading.aadhar ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <CircularProgress size={24} />
+                  <span style={{ marginLeft: 8 }}>Uploading...</span>
+                </Box>
+              ) : (
+                <input type="file" accept="image/*" onChange={e => handleUpload(e, 'aadharImageUrl')} />
+              )}
+            </Grid>
+            {/* PAN Image Upload */}
+            <Grid item xs={12} sm={6}>
+              <label>PAN Card Image:</label>
+              {form.panImageUrl ? (
+                <Box sx={{ mt: 1 }}>
+                  <img src={form.panImageUrl} alt="PAN" style={{ width: 120, height: 80, objectFit: 'cover', display: 'block', border: '1px solid #ddd' }} />
+                  <Typography variant="caption" color="success.main">PAN image uploaded</Typography>
+                </Box>
+              ) : uploading.pan ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <CircularProgress size={24} />
+                  <span style={{ marginLeft: 8 }}>Uploading...</span>
+                </Box>
+              ) : (
+                <input type="file" accept="image/*" onChange={e => handleUpload(e, 'panImageUrl')} />
+              )}
+            </Grid>
             <Grid item xs={12} sm={6}>
               <TextField label="Name" name="name" value={form.name} onChange={onChange} fullWidth />
             </Grid>

@@ -54,12 +54,16 @@ import EmployeeDetailsPage from '../pages/admin/EmployeeDetailsPage.jsx';
 
 
 
-const drawerWidth = 200;
+const drawerWidth = 230;
 
 export default function AdminLayout({ user, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [listingMenuOpen, setListingMenuOpen] = useState(false);
+  const [monitoringMenuOpen, setMonitoringMenuOpen] = useState(false);
+  const [compatMenuOpen, setCompatMenuOpen] = useState(false);
+  const [ordersMenuOpen, setOrdersMenuOpen] = useState(false);
+  const [manageMenuOpen, setManageMenuOpen] = useState(false);
   const navigate = useNavigate();
   const isSuper = user?.role === 'superadmin';
   const isProductAdmin = user?.role === 'productadmin';
@@ -86,6 +90,8 @@ export default function AdminLayout({ user, onLogout }) {
           </ListItem>
         )}
 
+
+        {/* Product Research - visible to ProductAdmin or Superadmin */}
         {isProductAdmin || isSuper ? (
           <ListItem disablePadding>
             <ListItemButton component={Link} to="/admin/research" onClick={() => setMobileOpen(false)}>
@@ -95,7 +101,8 @@ export default function AdminLayout({ user, onLogout }) {
           </ListItem>
         ) : null}
 
-        {isListingAdmin || isSuper ? (
+        {/* Listing Dropdown with Monitoring Subdropdown */}
+        {(isListingAdmin || isSuper) && (
           <>
             <ListItem disablePadding>
               <ListItemButton onClick={() => setListingMenuOpen((open) => !open)} sx={{ justifyContent: 'space-between' }}>
@@ -109,40 +116,109 @@ export default function AdminLayout({ user, onLogout }) {
                 <ListItemButton component={Link} to="/admin/listing" onClick={() => setMobileOpen(false)}>
                   <ListItemText primary="Product Table" />
                 </ListItemButton>
-                <ListItemButton component={Link} to="/admin/assignments" onClick={() => setMobileOpen(false)}>
-                  <ListItemText primary="Assignments" />
+                {/* Monitoring Subdropdown */}
+                <ListItemButton onClick={() => setMonitoringMenuOpen((open) => !open)} sx={{ justifyContent: 'space-between' }}>
+                  <ListItemText primary="Monitoring" />
+                  {monitoringMenuOpen ? <ExpandLess /> : <ExpandMore />}
                 </ListItemButton>
-                <ListItemButton component={Link} to="/admin/listings-summary" onClick={() => setMobileOpen(false)}>
-                  <ListItemText primary="Listings Summary" />
+                <Collapse in={monitoringMenuOpen} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding sx={{ pl: 4 }}>
+                    <ListItemButton component={Link} to="/admin/task-list" onClick={() => setMobileOpen(false)}>
+                      <ListItemText primary="Task List" />
+                    </ListItemButton>
+                    <ListItemButton component={Link} to="/admin/assignments" onClick={() => setMobileOpen(false)}>
+                      <ListItemText primary="Assignments" />
+                    </ListItemButton>
+                    <ListItemButton component={Link} to="/admin/listings-summary" onClick={() => setMobileOpen(false)}>
+                      <ListItemText primary="Listings Summary" />
+                    </ListItemButton>
+                    <ListItemButton component={Link} to="/admin/stock-ledger" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="R-C Tracker" />
+                </ListItemButton>
+                  </List>
+                </Collapse>
+                
+              </List>
+            </Collapse>
+          </>
+        )}
+
+        {/* Compatibility Dropdown */}
+        {isSuper && (
+          <>
+            <ListItem disablePadding>
+              <ListItemButton onClick={() => setCompatMenuOpen((open) => !open)} sx={{ justifyContent: 'space-between' }}>
+                <ListItemIcon><TaskIcon /></ListItemIcon>
+                <ListItemText primary="Compatibility" />
+                {compatMenuOpen ? <ExpandLess /> : <ExpandMore />}
+              </ListItemButton>
+            </ListItem>
+            <Collapse in={compatMenuOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding sx={{ pl: 4 }}>
+                <ListItemButton component={Link} to="/admin/compatibility-tasks" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Compatibility Tasks" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/admin/compatibility-progress" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Progress Tracking" />
                 </ListItemButton>
               </List>
             </Collapse>
           </>
-        ) : null}
+        )}
+
+        {/* Orders Dept Dropdown */}
+        {isSuper && (
+          <>
+            <ListItem disablePadding>
+              <ListItemButton onClick={() => setOrdersMenuOpen((open) => !open)} sx={{ justifyContent: 'space-between' }}>
+                <ListItemIcon><LocalShippingIcon /></ListItemIcon>
+                <ListItemText primary="Orders Dept" />
+                {ordersMenuOpen ? <ExpandLess /> : <ExpandMore />}
+              </ListItemButton>
+            </ListItem>
+            <Collapse in={ordersMenuOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding sx={{ pl: 4 }}>
+                <ListItemButton component={Link} to="/admin/fulfillment" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Fulfillment Orders" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/admin/awaiting-shipment" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Awaiting Shipment" />
+                </ListItemButton>
+              </List>
+            </Collapse>
+          </>
+        )}
+
+        {/* Manage Components Dropdown */}
+        {isSuper && (
+          <>
+            <ListItem disablePadding>
+              <ListItemButton onClick={() => setManageMenuOpen((open) => !open)} sx={{ justifyContent: 'space-between' }}>
+                <ListItemIcon><CategoryIcon /></ListItemIcon>
+                <ListItemText primary="Manage Components" />
+                {manageMenuOpen ? <ExpandLess /> : <ExpandMore />}
+              </ListItemButton>
+            </ListItem>
+            <Collapse in={manageMenuOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding sx={{ pl: 4 }}>
+                <ListItemButton component={Link} to="/admin/categories" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Manage Categories" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/admin/platforms" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Manage Platforms" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/admin/stores" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Manage Stores" />
+                </ListItemButton>
+              </List>
+            </Collapse>
+          </>
+        )}
+
+
         
-
-        {isListingAdmin || isSuper ? (
-  <>
-    <ListItem disablePadding>
-      <ListItemButton component={Link} to="/admin/task-list" onClick={() => setMobileOpen(false)}>
-        <ListItemIcon><TaskIcon/></ListItemIcon>
-        <ListItemText primary="Task List" />
-      </ListItemButton>
-    </ListItem>
-
-    <ListItem disablePadding>
-      <ListItemButton component={Link} to="/admin/stock-ledger" onClick={() => setMobileOpen(false)}>
-        <ListItemIcon><InsightsIcon /></ListItemIcon>
-        <ListItemText primary="R-C Tracker" />
-      </ListItemButton>
-    </ListItem>
-  </>
-) : null}
-
-
         
-        
-        {isProductAdmin || isSuper ? (
+        {isProductAdmin  ? (
           <>
             
             <ListItem disablePadding>
@@ -162,7 +238,7 @@ export default function AdminLayout({ user, onLogout }) {
             </ListItemButton>
           </ListItem>
         ) : null}
-        {(isSuper || isCompatibilityAdmin) && (
+        {( isCompatibilityAdmin) && (
           <>
             <ListItem disablePadding>
               <ListItemButton component={Link} to="/admin/add-compatibility-editor" onClick={() => setMobileOpen(false)}>
@@ -193,7 +269,7 @@ export default function AdminLayout({ user, onLogout }) {
           </ListItem>
         )}
 
-        {(isFulfillmentAdmin || isSuper) && (
+        {(isFulfillmentAdmin) && (
           <>
             <ListItem disablePadding>
               <ListItemButton component={Link} to="/admin/fulfillment" onClick={() => setMobileOpen(false)}>
@@ -221,25 +297,7 @@ export default function AdminLayout({ user, onLogout }) {
           </>
         ) : null}
 
-        {isSuper  ? (
-          <>
-            <ListItem disablePadding>
-              <ListItemButton component={Link} to="/admin/platforms" onClick={() => setMobileOpen(false)}>
-                <ListItemIcon><AppsIcon /></ListItemIcon>
-                <ListItemText primary="Platforms" />
-              </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-              <ListItemButton component={Link} to="/admin/stores" onClick={() => setMobileOpen(false)}>
-                <ListItemIcon><StoreIcon /></ListItemIcon>
-                <ListItemText primary="Stores" />
-              </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-              
-            </ListItem>
-          </>
-        ) : null}
+        
        
       </List>
     </div>

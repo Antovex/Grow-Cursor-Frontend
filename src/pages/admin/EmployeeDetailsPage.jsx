@@ -128,10 +128,26 @@ export default function EmployeeDetailsPage() {
                 <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Stack spacing={1} direction="row" alignItems="center" justifyContent="space-between">
-                      <Box>
-                        <Typography variant="h6" noWrap>{r.user?.username || 'Unknown'}</Typography>
-                        <Chip label={r.user?.role || 'N/A'} size="small" color="primary" sx={{ width: 'fit-content', mt: 0.5 }} />
-                        <Typography variant="body2" color="text.secondary">{r.user?.department || '-'}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexGrow: 1 }}>
+                        {/* Profile Photo in collapsed view */}
+                        {r.profilePicUrl && (
+                          <img 
+                            src={r.profilePicUrl} 
+                            alt="Profile" 
+                            style={{ 
+                              width: 50, 
+                              height: 50, 
+                              borderRadius: '50%', 
+                              objectFit: 'cover',
+                              border: '2px solid #1976d2'
+                            }} 
+                          />
+                        )}
+                        <Box>
+                          <Typography variant="h6" noWrap>{r.user?.username || 'Unknown'}</Typography>
+                          <Chip label={r.user?.role || 'N/A'} size="small" color="primary" sx={{ width: 'fit-content', mt: 0.5 }} />
+                          <Typography variant="body2" color="text.secondary">{r.user?.department || '-'}</Typography>
+                        </Box>
                       </Box>
                       <IconButton size="small" onClick={() => setExpanded(e => ({ ...e, [r._id]: !e[r._id] }))}>
                         <ExpandMoreIcon sx={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
@@ -151,6 +167,7 @@ export default function EmployeeDetailsPage() {
                           <Typography variant="caption" color="text.secondary">Phone:</Typography>
                           <Typography variant="body2">{r.phoneNumber || '-'}</Typography>
                         </Box>
+                        
                         <Box>
                           <Typography variant="caption" color="text.secondary">Gender:</Typography>
                           <Typography variant="body2">{r.gender || '-'}</Typography>
@@ -182,10 +199,36 @@ export default function EmployeeDetailsPage() {
                         <Box>
                           <Typography variant="caption" color="text.secondary">Aadhar Number:</Typography>
                           <Typography variant="body2">{r.aadharNumber || '-'}</Typography>
+                          {/* Admin-only view/download link for Aadhar Image */}
+                          {r.aadharImageUrl && (
+                            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => window.open(r.aadharImageUrl, '_blank')}
+                              >
+                                View Aadhar
+                              </Button>
+                              
+                            </Stack>
+                          )}
                         </Box>
                         <Box>
                           <Typography variant="caption" color="text.secondary">PAN Number:</Typography>
                           <Typography variant="body2">{r.panNumber || '-'}</Typography>
+                          {/* Admin-only view/download link for PAN Image */}
+                          {r.panImageUrl && (
+                            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => window.open(r.panImageUrl, '_blank')}
+                              >
+                                View PAN
+                              </Button>
+                              
+                            </Stack>
+                          )}
                         </Box>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Working Mode:</Typography>
