@@ -9,6 +9,7 @@ import AddListerPage from './pages/admin/AddListerPage.jsx';
 import ListingAnalyticsPage from './pages/admin/ListingAnalyticsPage.jsx';
 import ListerDashboard from './pages/lister/ListerDashboard.jsx';
 import SellerEbayPage from './pages/SellerProfilePage.jsx';
+import AboutMePage from './pages/AboutMePage.jsx';
 
 import { setAuthToken } from './lib/api'
 
@@ -26,10 +27,15 @@ function useAuth() {
     setAuthToken(t);
     localStorage.setItem('user', JSON.stringify(u));
     if (u.role === 'lister') navigate('/lister');
+    else if (u.role === 'advancelister') navigate('/lister');
+    else if (u.role === 'trainee') navigate('/lister');
     else if (u.role === 'compatibilityadmin') navigate('/admin/compatibility-tasks');
     else if (u.role === 'compatibilityeditor') navigate('/admin/compatibility-editor');
     else if (u.role === 'seller') navigate('/seller-ebay');
     else if (u.role === 'fulfillmentadmin') navigate('/admin/fulfillment');
+    else if (u.role === 'hradmin') navigate('/admin/employee-details');
+    else if (u.role === 'hr') navigate('/admin/about-me');
+    else if (u.role === 'operationhead') navigate('/admin/employee-details');
     else navigate('/admin');
   };
   const logout = () => {
@@ -54,6 +60,10 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage onLogin={login} />} />
         <Route
+          path="/about-me"
+          element={token && user ? <AboutMePage /> : <Navigate to="/login" replace />}
+        />
+        <Route
           path="/admin/*"
           element={
             token && user && (
@@ -62,7 +72,10 @@ export default function App() {
               user.role === 'superadmin' ||
               user.role === 'compatibilityadmin' ||
               user.role === 'compatibilityeditor' ||
-              user.role === 'fulfillmentadmin'
+              user.role === 'fulfillmentadmin' ||
+              user.role === 'hradmin' ||
+              user.role === 'hr' ||
+              user.role === 'operationhead'
             ) ? (
               <AdminLayout user={user} onLogout={logout} />
             ) : (
@@ -72,7 +85,7 @@ export default function App() {
         />
         <Route
           path="/lister"
-          element={token && user && user.role === 'lister' ? <ListerDashboard user={user} onLogout={logout} /> : <Navigate to="/login" replace />}
+          element={token && user && (user.role === 'lister' || user.role === 'advancelister' || user.role === 'trainee') ? <ListerDashboard user={user} onLogout={logout} /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/seller-ebay"

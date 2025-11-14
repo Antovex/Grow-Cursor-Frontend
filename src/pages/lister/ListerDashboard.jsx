@@ -1,5 +1,6 @@
 // src/pages/lister/ListerDashboard.jsx
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   AppBar, Box, Button, Card, CardContent, Grid,
   Toolbar, Typography, Divider, TextField,
@@ -7,8 +8,9 @@ import {
   TableHead, TableRow, Paper, Stack, Alert, IconButton, Autocomplete
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PersonIcon from '@mui/icons-material/Person';
 import api from '../../lib/api.js';
-
+ 
 export default function ListerDashboard({ user, onLogout }) {
   const [today, setToday] = useState([]);
   const [pending, setPending] = useState([]);
@@ -229,6 +231,7 @@ export default function ListerDashboard({ user, onLogout }) {
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>My Assignments</Typography>
           {user ? <Typography variant="body2" sx={{ mr: 2 }}>{user.username} (lister)</Typography> : null}
+          <Button color="inherit" component={Link} to="/about-me" startIcon={<PersonIcon />} sx={{ mr: 1 }}>About Me</Button>
           <Button color="inherit" onClick={onLogout}>Logout</Button>
         </Toolbar>
       </AppBar>

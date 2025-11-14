@@ -19,3 +19,29 @@ export function setAuthToken(token) {
 }
 
 export default api;
+
+// Employee Profiles APIs
+export async function getMyProfile() {
+  const { data } = await api.get('/employee-profiles/me');
+  return data;
+}
+
+export async function updateMyProfile(payload) {
+  const { data } = await api.put('/employee-profiles/me', payload);
+  return data;
+}
+
+export async function listEmployeeProfiles() {
+  const { data } = await api.get('/employee-profiles');
+  return data;
+}
+
+export async function updateEmployeeProfile(profileId, payload) {
+  const { data } = await api.put(`/employee-profiles/${profileId}`, payload);
+  return data;
+}
+
+export async function updateEmployeeAdminFields(profileId, payload) {
+  const { data } = await api.put(`/employee-profiles/${profileId}/admin-fields`, payload);
+  return data;
+}

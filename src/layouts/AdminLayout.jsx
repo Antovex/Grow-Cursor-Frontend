@@ -49,6 +49,8 @@ import ProgressTrackingPage from '../pages/compatibility/ProgressTrackingPage.js
 
 import FulfillmentDashboard from '../pages/admin/FulfillmentDashboard.jsx';
 import AwaitingShipmentPage from '../pages/admin/AwaitingShipmentPage.jsx';
+import AboutMePage from '../pages/AboutMePage.jsx';
+import EmployeeDetailsPage from '../pages/admin/EmployeeDetailsPage.jsx';
 
 
 
@@ -65,12 +67,25 @@ export default function AdminLayout({ user, onLogout }) {
   const isCompatibilityAdmin = user?.role === 'compatibilityadmin';
   const isCompatibilityEditor = user?.role === 'compatibilityeditor';
   const isFulfillmentAdmin = user?.role === 'fulfillmentadmin';
+  const isHRAdmin = user?.role === 'hradmin';
+  const isOperationHead = user?.role === 'operationhead';
+  const isSeller = user?.role === 'seller';
 
   const drawer = (
     <div>
       <Toolbar />
       <Divider />
       <List>
+        {/* About Me - visible to all users except superadmin */}
+        {!isSuper && (
+          <ListItem disablePadding>
+            <ListItemButton component={Link} to="/admin/about-me" onClick={() => setMobileOpen(false)}>
+              <ListItemIcon><SupervisorAccountIcon /></ListItemIcon>
+              <ListItemText primary="About Me" />
+            </ListItemButton>
+          </ListItem>
+        )}
+
         {isProductAdmin || isSuper ? (
           <ListItem disablePadding>
             <ListItemButton component={Link} to="/admin/research" onClick={() => setMobileOpen(false)}>
@@ -139,7 +154,7 @@ export default function AdminLayout({ user, onLogout }) {
           </>
         ) : null}
        
-        {isSuper || isListingAdmin ? (
+        {isSuper || isListingAdmin || isHRAdmin || isOperationHead ? (
           <ListItem disablePadding>
             <ListItemButton component={Link} to="/admin/add-user" onClick={() => setMobileOpen(false)}>
               <ListItemIcon><AddCircleIcon /></ListItemIcon>
@@ -194,6 +209,17 @@ export default function AdminLayout({ user, onLogout }) {
             </ListItem>
           </>
         )}
+
+        {(isSuper || isHRAdmin || isOperationHead) ? (
+          <>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} to="/admin/employee-details" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon><SupervisorAccountIcon /></ListItemIcon>
+                <ListItemText primary="Employee Details" />
+              </ListItemButton>
+            </ListItem>
+          </>
+        ) : null}
 
         {isSuper  ? (
           <>
@@ -256,6 +282,8 @@ export default function AdminLayout({ user, onLogout }) {
       <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${sidebarOpen ? drawerWidth : 56}px)` }, transition: 'width 0.2s' }}>
         <Toolbar />
         <Routes>
+          {/* About Me is accessible to all except superadmin */}
+          {!isSuper && <Route path="/about-me" element={<AboutMePage />} />}
           {isProductAdmin || isSuper ? (
             <>
               <Route path="/research" element={<ProductResearchPage />} />
@@ -272,7 +300,7 @@ export default function AdminLayout({ user, onLogout }) {
 
             </>
           ) : null}
-          {isSuper || isListingAdmin ? (
+          {isSuper || isListingAdmin || isHRAdmin || isOperationHead ? (
             <Route path="/add-user" element={<AddListerPage />} />
           ) : null}
           {isSuper || isListingAdmin ? (
@@ -283,7 +311,12 @@ export default function AdminLayout({ user, onLogout }) {
             </>
           ) : null}
           {isSuper && (
-            <Route path="/user-credentials" element={<UserCredentialsPage />} />
+            <>
+              <Route path="/user-credentials" element={<UserCredentialsPage />} />
+            </>
+          )}
+          {(isSuper || isHRAdmin || isOperationHead) && (
+            <Route path="/employee-details" element={<EmployeeDetailsPage />} />
           )}
           {isCompatibilityAdmin && (
             <>
@@ -308,7 +341,7 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/awaiting-shipment" element={<AwaitingShipmentPage />} />
             </>
           )}
-          <Route path="*" element={<Navigate to={isProductAdmin ? "/admin/research" : isListingAdmin ? "/admin/listing" : isCompatibilityAdmin ? "/admin/compatibility-tasks" : isCompatibilityEditor ? "/admin/compatibility-editor" : isFulfillmentAdmin ? "/admin/fulfillment" : "/admin/research"} replace />} />
+          <Route path="*" element={<Navigate to={isProductAdmin || isSuper ? "/admin/research" : isListingAdmin ? "/admin/listing" : isCompatibilityAdmin ? "/admin/compatibility-tasks" : isCompatibilityEditor ? "/admin/compatibility-editor" : isFulfillmentAdmin ? "/admin/fulfillment" : isHRAdmin || isOperationHead ? "/admin/employee-details" : "/admin/about-me"} replace />} />
         </Routes>
       </Box>
     </Box>

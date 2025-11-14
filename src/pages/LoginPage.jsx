@@ -14,7 +14,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 import api from '../lib/api.js';
 
 export default function LoginPage({ onLogin }) {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +23,7 @@ export default function LoginPage({ onLogin }) {
     e.preventDefault();
     setError('');
     try {
-      const { data } = await api.post('/auth/login', { email, password });
+      const { data } = await api.post('/auth/login', { username, password });
       onLogin(data.token, data.user);
     } catch (e) {
       const errorMessage = e?.response?.data?.error || e.message || 'Login failed';
@@ -42,12 +42,12 @@ export default function LoginPage({ onLogin }) {
         <Stack spacing={3} component="form" onSubmit={handleSubmit}>
           <Typography variant="h5">Sign in</Typography>
           <TextField 
-            label="Email" 
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
+            label="Username" 
+            value={username} 
+            onChange={(e) => setUsername(e.target.value)} 
             required
-            error={error?.includes('Email')}
-            helperText={error?.includes('Email') ? error : ''}
+            error={error?.includes('Username')}
+            helperText={error?.includes('Username') ? error : ''}
           />
           <TextField 
             label="Password" 
@@ -71,7 +71,7 @@ export default function LoginPage({ onLogin }) {
               ),
             }}
           />
-          {error && !error.includes('Email') && !error.includes('password') ? (
+          {error && !error.includes('Username') && !error.includes('password') ? (
             <Typography color="error" variant="body2">{error}</Typography>
           ) : null}
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>

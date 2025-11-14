@@ -6,16 +6,17 @@ import {
 } from '@mui/material';
 import api from '../../lib/api.js';
 
+
 export default function AddListerPage() {
-  const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('lister');
+  const [department, setDepartment] = useState('');
 
-  const [errors, setErrors] = useState({ email: '', username: '' });
+  const [errors, setErrors] = useState({ username: '' });
   const [msg, setMsg] = useState('');
   const [showCreds, setShowCreds] = useState(false);
-  const [creds, setCreds] = useState({ email: '', username: '', password: '', role: 'lister' });
+  const [creds, setCreds] = useState({ username: '', password: '', role: 'lister', department: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const currentUser = useMemo(() => {
@@ -25,6 +26,9 @@ export default function AddListerPage() {
   const isSuper = currentUser?.role === 'superadmin';
   const isListingAdmin = currentUser?.role === 'listingadmin';
   const isCompatibilityAdmin = currentUser?.role === 'compatibilityadmin';
+  const isHRAdmin = currentUser?.role === 'hradmin';
+  const isOperationHead = currentUser?.role === 'operationhead';
+  const isSuperLike = isSuper || isHRAdmin || isOperationHead;
 
   const clearFieldError = (field) =>
     setErrors(prev => ({ ...prev, [field]: '' }));
@@ -32,23 +36,55 @@ export default function AddListerPage() {
   const handleCreate = async (e) => {
     e.preventDefault();
     setMsg('');
-    setErrors({ email: '', username: '' });
+    setErrors({ username: '' });
     setSubmitting(true);
 
     try {
-      const newRole = isSuper ? role : isCompatibilityAdmin ? 'compatibilityeditor' : 'lister';
+      // Determine role and department logic
+      let newRole = 'lister';
+      let newDepartment = department;
+      if (isSuperLike) {
+        newRole = role;
+        // For compatibilityadmin/compatibilityeditor, department is always Compatibility
+        if (role === 'compatibilityadmin' || role === 'compatibilityeditor') {
+          newDepartment = 'Compatibility';
+        }
+      } else if (isCompatibilityAdmin) {
+        newRole = 'compatibilityeditor';
+        newDepartment = 'Compatibility';
+      } else if (isListingAdmin) {
+        newRole = 'lister';
+        newDepartment = 'Listing';
+      }
+
+      // Department required for lister, listingadmin, compatibilityadmin, compatibilityeditor, superadmin
+      const needsDepartment = (
+        isSuperLike || isListingAdmin || isCompatibilityAdmin ||
+        ['lister', 'listingadmin', 'compatibilityadmin', 'compatibilityeditor'].includes(newRole)
+      );
+      if (needsDepartment && !newDepartment) {
+        setMsg('Department is required');
+        setSubmitting(false);
+        return;
+      }
+
       const res = await api.post('/users', {
-        email, username, password, newUserRole: newRole
+        username, password, newUserRole: newRole, department: newDepartment
       });
 
-      const roleNames = { 
-        productadmin: 'Product Admin', 
-        listingadmin: 'Listing Admin', 
-        compatibilityadmin: 'Compatibility Admin', 
+      const roleNames = {
+        productadmin: 'Product Admin',
+        listingadmin: 'Listing Admin',
+        compatibilityadmin: 'Compatibility Admin',
         compatibilityeditor: 'Compatibility Editor',
         fulfillmentadmin: 'Fulfillment Admin',
         lister: 'Lister',
-        seller: 'Seller'
+        advancelister: 'Advance Lister',
+        seller: 'Seller',
+        hradmin: 'HR Admin',
+        hr: 'HR',
+        operationhead: 'Operation Head',
+        trainee: 'Trainee'
       };
       setMsg(`${roleNames[newRole]} created`);
 
@@ -60,23 +96,21 @@ export default function AddListerPage() {
         localStorage.setItem('userCredentials', JSON.stringify(list));
       }
 
-      setCreds({ email, username, password, role: newRole });
+      setCreds({ username, password, role: newRole, department: newDepartment });
       setShowCreds(true);
 
       // reset form
-      setEmail('');
       setUsername('');
       setPassword('');
       setRole('lister');
+      setDepartment('');
     } catch (err) {
       const status = err?.response?.status;
       const message = err?.response?.data?.error || 'Failed to create user';
 
       if (status === 409) {
-        // Backend sends "Email already in use" or "Username already in use"
-        if (/email/i.test(message)) {
-          setErrors(prev => ({ ...prev, email: message }));
-        } else if (/username/i.test(message)) {
+        // Backend sends "Username already in use"
+        if (/username/i.test(message)) {
           setErrors(prev => ({ ...prev, username: message }));
         } else {
           setMsg(message);
@@ -94,15 +128,6 @@ export default function AddListerPage() {
       <Typography variant="h6" sx={{ mb: 2 }}>Add User</Typography>
       <Stack spacing={2} component="form" onSubmit={handleCreate}>
         <TextField
-          label="Email"
-          value={email}
-          onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
-          required
-          error={!!errors.email}
-          helperText={errors.email || ' '}
-          disabled={submitting}
-        />
-        <TextField
           label="Username"
           value={username}
           onChange={(e) => { setUsername(e.target.value); clearFieldError('username'); }}
@@ -119,7 +144,7 @@ export default function AddListerPage() {
           required
           disabled={submitting}
         />
-        {isSuper ? (
+        {isSuperLike ? (
           <FormControl disabled={submitting}>
             <InputLabel>Role</InputLabel>
             <Select label="Role" value={role} onChange={(e) => setRole(e.target.value)}>
@@ -128,14 +153,38 @@ export default function AddListerPage() {
               <MenuItem value="compatibilityadmin">Compatibility Admin</MenuItem>
               <MenuItem value="compatibilityeditor">Compatibility Editor</MenuItem>
               <MenuItem value="fulfillmentadmin">Fulfillment Admin</MenuItem>
+              <MenuItem value="hradmin">HR Admin</MenuItem>
+              <MenuItem value="hr">HR</MenuItem>
+              <MenuItem value="operationhead">Operation Head</MenuItem>
               <MenuItem value="lister">Lister</MenuItem>
+              <MenuItem value="advancelister">Advance Lister</MenuItem>
+              <MenuItem value="trainee">Trainee</MenuItem>
               <MenuItem value="seller">Seller</MenuItem>
             </Select>
           </FormControl>
         ) : isListingAdmin ? (
-          <Typography variant="body2" color="text.secondary">Creating Lister</Typography>
+          <Typography variant="body2" color="text.secondary">Creating Lister (Department: Listing)</Typography>
         ) : isCompatibilityAdmin ? (
-          <Typography variant="body2" color="text.secondary">Creating Compatibility Editor</Typography>
+          <Typography variant="body2" color="text.secondary">Creating Compatibility Editor (Department: Compatibility)</Typography>
+        ) : null}
+        {isSuperLike ? (
+          <FormControl disabled={submitting || (isSuperLike && (role === 'compatibilityadmin' || role === 'compatibilityeditor'))}>
+            <InputLabel>Department</InputLabel>
+            <Select
+              label="Department"
+              value={isSuperLike && (role === 'compatibilityadmin' || role === 'compatibilityeditor') ? 'Compatibility' : department}
+              onChange={(e) => setDepartment(e.target.value)}
+              disabled={isSuperLike && (role === 'compatibilityadmin' || role === 'compatibilityeditor')}
+            >
+              <MenuItem value="">Select Department</MenuItem>
+              <MenuItem value="Product Research">Product Research Department</MenuItem>
+              <MenuItem value="Listing">Listing Department</MenuItem>
+              <MenuItem value="Compatibility">Compatibility Department</MenuItem>
+              <MenuItem value="HR">HR Department</MenuItem>
+              <MenuItem value="Operations">Operations Department</MenuItem>
+              <MenuItem value="Executives">Executives Department</MenuItem>
+            </Select>
+          </FormControl>
         ) : null}
         <Box>
           <Button type="submit" variant="contained" disabled={submitting}>Create</Button>
@@ -151,10 +200,10 @@ export default function AddListerPage() {
       >
         <Alert onClose={() => setShowCreds(false)} severity="info" sx={{ width: '100%' }}>
           Share these credentials securely:
-          <br />Email: {creds.email}
           <br />Username: {creds.username}
           <br />Password: {creds.password}
           <br />Role: {creds.role}
+          {creds.department && <><br />Department: {creds.department}</>}
         </Alert>
       </Snackbar>
     </Paper>
