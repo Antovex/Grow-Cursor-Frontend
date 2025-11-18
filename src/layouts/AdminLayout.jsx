@@ -44,6 +44,8 @@ import TaskIcon from '@mui/icons-material/Task';
 
 import TaskListPage from '../pages/admin/TaskListPage.jsx';
 import StockLedgerPage from '../pages/admin/StockLedgerPage.jsx';
+import StoreWiseTaskListPage from '../pages/admin/StoreWiseTaskListPage.jsx';
+import StoreTaskDetailPage from '../pages/admin/StoreTaskDetailPage.jsx';
 import AdminTaskList from '../pages/compatibility/AdminTaskList.jsx';
 import EditorDashboard from '../pages/compatibility/EditorDashboard.jsx';
 import ProgressTrackingPage from '../pages/compatibility/ProgressTrackingPage.jsx';
@@ -138,11 +140,12 @@ export default function AdminLayout({ user, onLogout }) {
                     <ListItemButton component={Link} to="/admin/listings-summary" onClick={() => setMobileOpen(false)}>
                       <ListItemText primary="Listings Summary" />
                     </ListItemButton>
-                    <ListItemButton component={Link} to="/admin/stock-ledger" onClick={() => setMobileOpen(false)}>
-                  <ListItemText primary="R-C Tracker" />
-                </ListItemButton>
+                   
                     <ListItemButton component={Link} to="/admin/listing-sheet" onClick={() => setMobileOpen(false)}>
                       <ListItemText primary="Listing Sheet" />
+                    </ListItemButton>
+                    <ListItemButton component={Link} to="/admin/store-wise-tasks" onClick={() => setMobileOpen(false)}>
+                      <ListItemText primary="Store-Wise Tasks" />
                     </ListItemButton>
                   </List>
                 </Collapse>
@@ -378,8 +381,10 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/listing" element={<ListingManagementPage />} />
               <Route path="/assignments" element={<AdminAssignmentsPage />} />
               <Route path="/task-list" element={<TaskListPage />} />
-              <Route path="/stock-ledger" element={<StockLedgerPage />} />
+              //<Route path="/stock-ledger" element={<StockLedgerPage />} />
               <Route path="/listing-sheet" element={<ListingSheetPage />} />
+              <Route path="/store-wise-tasks" element={<StoreWiseTaskListPage />} />
+              <Route path="/store-wise-tasks/details" element={<StoreTaskDetailPage />} />
 
             </>
           ) : null}

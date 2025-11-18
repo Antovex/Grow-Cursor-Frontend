@@ -1,20 +1,13 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import {
-  Box, Button, FormControl, InputLabel, MenuItem, Select,
-  Stack, Table, TableBody, TableCell, TableContainer,
+  Box, Button, Stack, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Typography, TextField, Collapse, IconButton,
-  Badge, Divider, Grid, OutlinedInput, Checkbox, ListItemText, Chip
+  Badge, Divider, Grid, Chip, Pagination, Autocomplete, FormControl, InputLabel, MenuItem, Select
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import api from '../../lib/api.js';
-
-const ITEM_HEIGHT = 44;
-const ITEM_PADDING_TOP = 8;
-const MenuProps = {
-  PaperProps: { style: { maxHeight: ITEM_HEIGHT * 6 + ITEM_PADDING_TOP, width: 280 } },
-};
 
 const unique = (arr) => Array.from(new Set(arr.filter(Boolean)));
 
@@ -23,9 +16,23 @@ export default function ListingSheetPage() {
   const [platforms, setPlatforms] = useState([]);
   const [stores, setStores] = useState([]);
   const [openFilters, setOpenFilters] = useState(false);
+  const isFirstRender = useRef(true);
+  const isFilterChange = useRef(false); // Track if page change is due to filter
+  
+  // Filter options from database (ALL available options)
+  const [allCategories, setAllCategories] = useState([]);
+  const [allSubcategories, setAllSubcategories] = useState([]);
+  const [allRanges, setAllRanges] = useState([]);
+  
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 100; // Increased from 50 to 100
+  
   const [filters, setFilters] = useState({
-    platformId: '',
-    storeId: '',
+    platformId: null, // Changed to store full object
+    storeId: null, // Changed to store full object
     marketplace: '',
     dateMode: 'none', // 'none', 'single', 'range'
     singleDate: '',
@@ -50,87 +57,121 @@ export default function ListingSheetPage() {
     setPlatforms(lp);
   };
 
-  const fetchAllData = async () => {
+  const loadFilterOptions = async () => {
     try {
-      // Fetch all data without any filters
-      const { data } = await api.get('/listing-completions/sheet');
-      setAllRows(data);
+      // Fetch ALL categories, subcategories, and ranges from database
+      const [categoriesRes, subcategoriesRes, rangesRes] = await Promise.all([
+        api.get('/categories'),
+        api.get('/subcategories'),
+        api.get('/ranges')
+      ]);
+      
+      setAllCategories(categoriesRes.data.map(c => c.name));
+      setAllSubcategories(subcategoriesRes.data.map(s => s.name));
+      setAllRanges(rangesRes.data.map(r => r.name));
+    } catch (error) {
+      console.error('Failed to load filter options:', error);
+    }
+  };
+
+  const fetchAllData = async (pageOverride) => {
+    try {
+      const currentPage = pageOverride !== undefined ? pageOverride : page;
+      const params = { page: currentPage, limit };
+      
+      // Add filter parameters
+      if (filters.platformId?._id) params.platformId = filters.platformId._id;
+      if (filters.storeId?._id) params.storeId = filters.storeId._id;
+      if (filters.marketplace) params.marketplace = filters.marketplace;
+      
+      // Date filters - use ISO format (YYYY-MM-DD)
+      if (filters.dateMode === 'single' && filters.singleDate) {
+        params.startDate = filters.singleDate;
+        params.endDate = filters.singleDate;
+      } else if (filters.dateMode === 'range') {
+        if (filters.startDate) params.startDate = filters.startDate;
+        if (filters.endDate) params.endDate = filters.endDate;
+      }
+      
+      // Category, subcategory, range filters
+      if (filters.category.length) params.category = filters.category.join(',');
+      if (filters.subcategory.length) params.subcategory = filters.subcategory.join(',');
+      if (filters.range.length) params.range = filters.range.join(',');
+      
+      const { data } = await api.get('/listing-completions/sheet', { params });
+      
+      // Handle both paginated and non-paginated responses
+      if (data.items) {
+        setAllRows(data.items);
+        setTotal(data.total || 0);
+        setTotalPages(Math.ceil((data.total || 0) / limit));
+      } else {
+        // Fallback for non-paginated response
+        setAllRows(data);
+        setTotal(data.length);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error('Failed to fetch listing sheet data:', error);
     }
   };
 
+  // Initial load
   useEffect(() => {
     load();
-    fetchAllData(); // Load all data on mount
-  }, []);
+    loadFilterOptions();
+    fetchAllData(1);
+    isFirstRender.current = false;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // When filters change, reset to page 1 and reload
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    isFilterChange.current = true;
+    setPage(1);
+    fetchAllData(1);
+  }, [
+    filters.platformId,
+    filters.storeId,
+    filters.marketplace,
+    filters.dateMode,
+    filters.singleDate,
+    filters.startDate,
+    filters.endDate,
+    JSON.stringify(filters.category),
+    JSON.stringify(filters.subcategory),
+    JSON.stringify(filters.range)
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // Load data when page changes (skip if triggered by filter)
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    if (isFilterChange.current) {
+      isFilterChange.current = false; // Reset flag
+      return; // Skip loading, filter effect already loaded
+    }
+    fetchAllData();
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (filters.platformId) {
+    if (filters.platformId?._id) {
       api
-        .get('/stores', { params: { platformId: filters.platformId } })
+        .get('/stores', { params: { platformId: filters.platformId._id } })
         .then(({ data }) => setStores(data));
     } else {
       setStores([]);
-      setFilters(prev => ({ ...prev, storeId: '' }));
     }
   }, [filters.platformId]);
+  
+  // Clear storeId when platform changes
+  useEffect(() => {
+    if (!filters.platformId && filters.storeId) {
+      setFilters(prev => ({ ...prev, storeId: null }));
+    }
+  }, [filters.platformId, filters.storeId]);
 
-  // Get unique values for all filters from allRows
-  const allCategories = useMemo(() => unique(allRows.map(r => r.category)), [allRows]);
-  const allSubcategories = useMemo(() => unique(allRows.map(r => r.subcategory)), [allRows]);
-  const allRanges = useMemo(() => unique(allRows.map(r => r.range)), [allRows]);
-
-  // Helper function to convert date to YYYY-MM-DD format
-  const toYMD = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Apply ALL filters client-side
-  const filteredRows = useMemo(() => {
-    return allRows.filter(r => {
-      // Platform filter
-      if (filters.platformId) {
-        const platformMatch = platforms.find(p => p._id === filters.platformId);
-        if (platformMatch && r.platform !== platformMatch.name) return false;
-      }
-      
-      // Store filter
-      if (filters.storeId) {
-        const storeMatch = stores.find(s => s._id === filters.storeId);
-        if (storeMatch && r.store !== storeMatch.name) return false;
-      }
-      
-      // Marketplace filter
-      if (filters.marketplace && r.marketplace !== filters.marketplace) return false;
-      
-      // Date filter
-      if (filters.dateMode === 'single' && filters.singleDate) {
-        const rowDate = toYMD(r.date);
-        if (rowDate !== filters.singleDate) return false;
-      } else if (filters.dateMode === 'range') {
-        const rowDate = toYMD(r.date);
-        if (filters.startDate && rowDate < filters.startDate) return false;
-        if (filters.endDate && rowDate > filters.endDate) return false;
-      }
-      
-      // Category filter
-      if (filters.category.length && !filters.category.includes(r.category)) return false;
-      
-      // Subcategory filter
-      if (filters.subcategory.length && !filters.subcategory.includes(r.subcategory)) return false;
-      
-      // Range filter
-      if (filters.range.length && !filters.range.includes(r.range)) return false;
-      
-      return true;
-    });
-  }, [allRows, filters, platforms, stores]);
+  // No client-side filtering - backend handles it
+  const filteredRows = allRows;
 
   // Calculate total quantity
   const totalQuantity = useMemo(() => {
@@ -150,15 +191,10 @@ export default function ListingSheetPage() {
     return n;
   }, [filters]);
 
-  const handleMultiChange = (key) => (e) => {
-    const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-    setFilters(f => ({ ...f, [key]: value }));
-  };
-
   const handleReset = () => {
     setFilters({
-      platformId: '',
-      storeId: '',
+      platformId: null,
+      storeId: null,
       marketplace: '',
       dateMode: 'none',
       singleDate: '',
@@ -168,7 +204,13 @@ export default function ListingSheetPage() {
       subcategory: [],
       range: []
     });
-    // No need to fetch data - filters will automatically reset
+    setPage(1); // Reset to first page
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    fetchAllData(value); // Load immediately with new page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -212,36 +254,29 @@ export default function ListingSheetPage() {
           <Grid container spacing={1.5} alignItems="center">
             {/* Platform */}
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Platform</InputLabel>
-                <Select
-                  label="Platform"
-                  value={filters.platformId}
-                  onChange={(e) => setFilters({ ...filters, platformId: e.target.value })}
-                >
-                  <MenuItem value="">All</MenuItem>
-                  {platforms.map((p) => (
-                    <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                size="small"
+                options={platforms}
+                getOptionLabel={(option) => option.name || ''}
+                value={filters.platformId}
+                onChange={(e, newValue) => setFilters({ ...filters, platformId: newValue })}
+                renderInput={(params) => <TextField {...params} label="Platform" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+              />
             </Grid>
 
             {/* Store */}
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth size="small" disabled={!filters.platformId}>
-                <InputLabel>Store</InputLabel>
-                <Select
-                  label="Store"
-                  value={filters.storeId}
-                  onChange={(e) => setFilters({ ...filters, storeId: e.target.value })}
-                >
-                  <MenuItem value="">All</MenuItem>
-                  {stores.map((s) => (
-                    <MenuItem key={s._id} value={s._id}>{s.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                size="small"
+                options={stores}
+                getOptionLabel={(option) => option.name || ''}
+                value={filters.storeId}
+                onChange={(e, newValue) => setFilters({ ...filters, storeId: newValue })}
+                renderInput={(params) => <TextField {...params} label="Store" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+                disabled={!filters.platformId}
+              />
             </Grid>
 
             {/* Marketplace */}
@@ -321,83 +356,53 @@ export default function ListingSheetPage() {
 
             {/* Category */}
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Category</InputLabel>
-                <Select
-                  multiple
-                  label="Category"
-                  value={filters.category}
-                  onChange={handleMultiChange('category')}
-                  input={<OutlinedInput label="Category" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((v) => <Chip key={v} label={v} size="small" />)}
-                    </Box>
-                  )}
-                  MenuProps={MenuProps}
-                >
-                  {allCategories.map((name) => (
-                    <MenuItem key={name} value={name}>
-                      <Checkbox size="small" checked={filters.category.indexOf(name) > -1} />
-                      <ListItemText primary={name} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                multiple
+                size="small"
+                options={allCategories}
+                value={filters.category}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, category: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Category" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
             </Grid>
 
             {/* Subcategory */}
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Subcategory</InputLabel>
-                <Select
-                  multiple
-                  label="Subcategory"
-                  value={filters.subcategory}
-                  onChange={handleMultiChange('subcategory')}
-                  input={<OutlinedInput label="Subcategory" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((v) => <Chip key={v} label={v} size="small" />)}
-                    </Box>
-                  )}
-                  MenuProps={MenuProps}
-                >
-                  {allSubcategories.map((name) => (
-                    <MenuItem key={name} value={name}>
-                      <Checkbox size="small" checked={filters.subcategory.indexOf(name) > -1} />
-                      <ListItemText primary={name} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                multiple
+                size="small"
+                options={allSubcategories}
+                value={filters.subcategory}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, subcategory: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Subcategory" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
             </Grid>
 
             {/* Range */}
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Range</InputLabel>
-                <Select
-                  multiple
-                  label="Range"
-                  value={filters.range}
-                  onChange={handleMultiChange('range')}
-                  input={<OutlinedInput label="Range" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((v) => <Chip key={v} label={v} size="small" />)}
-                    </Box>
-                  )}
-                  MenuProps={MenuProps}
-                >
-                  {allRanges.map((name) => (
-                    <MenuItem key={name} value={name}>
-                      <Checkbox size="small" checked={filters.range.indexOf(name) > -1} />
-                      <ListItemText primary={name} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                multiple
+                size="small"
+                options={allRanges}
+                value={filters.range}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, range: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Range" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
             </Grid>
           </Grid>
         </Collapse>
@@ -421,7 +426,7 @@ export default function ListingSheetPage() {
             <TableBody>
               {filteredRows.map((row, idx) => (
                 <TableRow key={idx}>
-                  <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
+                  <TableCell>{new Date(row.date).toLocaleDateString('en-GB')}</TableCell>
                   <TableCell>{row.platform}</TableCell>
                   <TableCell>{row.store}</TableCell>
                   <TableCell>{row.marketplace?.replace('EBAY_', 'eBay ').replace('_', ' ')}</TableCell>
@@ -447,6 +452,20 @@ export default function ListingSheetPage() {
             No data available.
           </Typography>
         </Box>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Paper sx={{ p: 2, mt: 2, display: 'flex', justifyContent: 'center' }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Paper>
       )}
     </Box>
   );

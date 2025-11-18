@@ -1,8 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Box, Paper, Table, TableHead, TableRow, TableCell, TableBody, Typography, Chip, Stack,
   LinearProgress, TextField, FormControl, InputLabel, Select, MenuItem, Grid, Button,
-  Collapse, IconButton, Badge
+  Collapse, IconButton, Badge, Pagination, Autocomplete
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
@@ -13,22 +13,72 @@ export default function ProgressTrackingPage() {
   const [loading, setLoading] = useState(false);
   const [openFilters, setOpenFilters] = useState(false);
   
-  // Filter state
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const itemsPerPage = 50;
+  
+  // Filter options from database
+  const [allSubcategories, setAllSubcategories] = useState([]);
+  const [allListingPlatforms, setAllListingPlatforms] = useState([]);
+  const [allStores, setAllStores] = useState([]);
+  const [allMarketplaces, setAllMarketplaces] = useState([]);
+  const [allEditors, setAllEditors] = useState([]);
+  
+  // Refs for proper filter/page handling
+  const isFirstRender = useRef(true);
+  const isFilterChange = useRef(false);
+  
+  // Filter state - now using full objects with _id
   const [filters, setFilters] = useState({
-    date: { mode: 'none', single: '', from: '', to: '' }, // 'none' | 'single' | 'range'
-    subcategory: '',
-    listingPlatform: '',
-    store: '',
+    date: { mode: 'none', single: '', from: '', to: '' },
+    subcategory: null,
+    listingPlatform: null,
+    store: null,
     marketplace: '',
-    editor: '',
-    pending: { mode: 'none', value: '' }, // 'none' | 'equal' | 'greater' | 'less'
+    editor: null,
+    pending: { mode: 'none', value: '' },
   });
 
-  const load = async () => {
+  
+  const loadFilterOptions = async () => {
+    try {
+      const { data } = await api.get('/compatibility/filter-options');
+      setAllSubcategories(data.subcategories || []);
+      setAllListingPlatforms(data.listingPlatforms || []);
+      setAllStores(data.stores || []);
+      setAllMarketplaces(data.marketplaces || []);
+      setAllEditors(data.editors || []);
+    } catch (e) {
+      console.error('Failed to load filter options', e);
+    }
+  };
+
+  const load = async (pageOverride) => {
+    const currentPage = pageOverride !== undefined ? pageOverride : page;
     setLoading(true);
     try {
-      const { data } = await api.get('/compatibility/progress');
-      setItems(data || []);
+      const params = {
+        page: currentPage,
+        limit: itemsPerPage,
+        dateMode: filters.date.mode,
+        dateSingle: filters.date.single,
+        dateFrom: filters.date.from,
+        dateTo: filters.date.to,
+        subcategory: filters.subcategory?._id || '',
+        listingPlatform: filters.listingPlatform?._id || '',
+        store: filters.store?._id || '',
+        marketplace: filters.marketplace,
+        editor: filters.editor?._id || '',
+        pendingMode: filters.pending.mode,
+        pendingValue: filters.pending.value,
+      };
+      
+      const { data } = await api.get('/compatibility/progress', { params });
+      setItems(data.items || []);
+      setTotalItems(data.totalItems || 0);
+      setTotalPages(data.totalPages || 0);
     } catch (e) {
       console.error(e);
     } finally {
@@ -36,7 +86,48 @@ export default function ProgressTrackingPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    loadFilterOptions();
+  }, []);
+  
+  // Load data on mount
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      load(1);
+      return;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // When any filter changes, reset to page 1
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    isFilterChange.current = true;
+    setPage(1);
+    load(1);
+  }, [
+    filters.date.mode,
+    filters.date.single,
+    filters.date.from,
+    filters.date.to,
+    filters.subcategory,
+    filters.listingPlatform,
+    filters.store,
+    filters.marketplace,
+    filters.editor,
+    filters.pending.mode,
+    filters.pending.value
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // When page changes (but not due to filter change)
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    if (isFilterChange.current) {
+      isFilterChange.current = false;
+      return;
+    }
+    load();
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pendingQty = (item) => {
     const q = item.quantity || 0;
@@ -50,105 +141,6 @@ export default function ProgressTrackingPage() {
     const c = Math.min(item.completedQuantity || 0, q);
     return Math.round((c / q) * 100);
   };
-
-  // Date conversion to YYYY-MM-DD (IST-safe)
-  const toISTYMD = (d) => {
-    if (!d) return '';
-    const dt = new Date(d);
-    const utc = dt.getTime() + dt.getTimezoneOffset() * 60000;
-    const ist = new Date(utc + 330 * 60000); // +05:30
-    const y = ist.getFullYear();
-    const m = String(ist.getMonth() + 1).padStart(2, '0');
-    const day = String(ist.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
-
-  // Get unique values for filter dropdowns
-  const uniqueSubcategories = useMemo(() => {
-    const subcats = items.map(item => item.task?.subcategory?.name).filter(Boolean);
-    return Array.from(new Set(subcats)).sort();
-  }, [items]);
-
-  const uniqueEditors = useMemo(() => {
-    const editors = items.map(item => item.editor?.username).filter(Boolean);
-    return Array.from(new Set(editors)).sort();
-  }, [items]);
-
-  const uniqueListingPlatforms = useMemo(() => {
-    const list = items.map(item => item.sourceAssignment?.listingPlatform?.name).filter(Boolean);
-    return Array.from(new Set(list)).sort();
-  }, [items]);
-
-  const uniqueStores = useMemo(() => {
-    const list = items.map(item => item.sourceAssignment?.store?.name).filter(Boolean);
-    return Array.from(new Set(list)).sort();
-  }, [items]);
-
-  const uniqueMarketplaces = useMemo(() => {
-    const list = items.map(item => item.sourceAssignment?.marketplace).filter(Boolean);
-    return Array.from(new Set(list)).sort();
-  }, [items]);
-
-  // Filter logic
-  const matchesDate = (createdAt, dateFilter) => {
-    const ymd = toISTYMD(createdAt);
-    if (dateFilter.mode === 'none') return true;
-    if (dateFilter.mode === 'single') return dateFilter.single ? ymd === dateFilter.single : true;
-    // range
-    const { from, to } = dateFilter;
-    if (!from && !to) return true;
-    if (from && ymd < from) return false;
-    if (to && ymd > to) return false;
-    return true;
-  };
-
-  const matchesSubcategory = (item) => {
-    if (!filters.subcategory) return true;
-    return item.task?.subcategory?.name === filters.subcategory;
-  };
-
-  const matchesEditor = (item) => {
-    if (!filters.editor) return true;
-    return item.editor?.username === filters.editor;
-  };
-
-  const matchesListingPlatform = (item) => {
-    if (!filters.listingPlatform) return true;
-    return item.sourceAssignment?.listingPlatform?.name === filters.listingPlatform;
-  };
-
-  const matchesStore = (item) => {
-    if (!filters.store) return true;
-    return item.sourceAssignment?.store?.name === filters.store;
-  };
-
-  const matchesMarketplace = (item) => {
-    if (!filters.marketplace) return true;
-    return item.sourceAssignment?.marketplace === filters.marketplace;
-  };
-
-  const matchesPending = (item) => {
-    if (filters.pending.mode === 'none' || !filters.pending.value) return true;
-    const pending = pendingQty(item);
-    const value = Number(filters.pending.value);
-    if (filters.pending.mode === 'equal') return pending === value;
-    if (filters.pending.mode === 'greater') return pending > value;
-    if (filters.pending.mode === 'less') return pending < value;
-    return true;
-  };
-
-  // Filtered items
-  const filteredItems = useMemo(() => {
-    return items.filter(item =>
-      matchesDate(item.createdAt, filters.date) &&
-      matchesSubcategory(item) &&
-      matchesListingPlatform(item) &&
-      matchesStore(item) &&
-      matchesMarketplace(item) &&
-      matchesEditor(item) &&
-      matchesPending(item)
-    );
-  }, [items, filters]);
 
   // Active filter count
   const activeFilterCount = useMemo(() => {
@@ -168,28 +160,18 @@ export default function ProgressTrackingPage() {
   const clearFilters = () => {
     setFilters({
       date: { mode: 'none', single: '', from: '', to: '' },
-      subcategory: '',
-      listingPlatform: '',
-      store: '',
+      subcategory: null,
+      listingPlatform: null,
+      store: null,
       marketplace: '',
-      editor: '',
+      editor: null,
       pending: { mode: 'none', value: '' },
     });
   };
 
-  // Calculate totals for summary row
-  const totals = useMemo(() => {
-    return {
-      count: filteredItems.length,
-      totalQty: filteredItems.reduce((sum, item) => sum + (item.quantity || 0), 0),
-      completed: filteredItems.reduce((sum, item) => sum + (item.completedQuantity || 0), 0),
-      pending: filteredItems.reduce((sum, item) => sum + pendingQty(item), 0),
-    };
-  }, [filteredItems]);
-
   return (
     <Box>
-      
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h6">Compatibility Progress Tracking</Typography>
         <Stack direction="row" spacing={1}>
           <Badge badgeContent={activeFilterCount} color="primary">
@@ -207,11 +189,11 @@ export default function ProgressTrackingPage() {
             </IconButton>
           )}
         </Stack>
-      
+      </Stack>
 
       {/* Filters Section */}
       <Collapse in={openFilters}>
-        
+        <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 2 }}>Filters</Typography>
           <Grid container spacing={2}>
             {/* Date Filter */}
@@ -273,53 +255,41 @@ export default function ProgressTrackingPage() {
 
             {/* Subcategory Filter */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Subcategory</InputLabel>
-                <Select
-                  label="Subcategory"
-                  value={filters.subcategory}
-                  onChange={(e) => setFilters(f => ({ ...f, subcategory: e.target.value }))}
-                >
-                  <MenuItem value="">All Subcategories</MenuItem>
-                  {uniqueSubcategories.map(subcat => (
-                    <MenuItem key={subcat} value={subcat}>{subcat}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                size="small"
+                options={allSubcategories}
+                getOptionLabel={(option) => option.name || ''}
+                value={filters.subcategory}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, subcategory: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Subcategory" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+              />
             </Grid>
 
             {/* Listing Platform Filter */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Listing Platform</InputLabel>
-                <Select
-                  label="Listing Platform"
-                  value={filters.listingPlatform}
-                  onChange={(e) => setFilters(f => ({ ...f, listingPlatform: e.target.value }))}
-                >
-                  <MenuItem value="">All Platforms</MenuItem>
-                  {uniqueListingPlatforms.map(lp => (
-                    <MenuItem key={lp} value={lp}>{lp}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                size="small"
+                options={allListingPlatforms}
+                getOptionLabel={(option) => option.name || ''}
+                value={filters.listingPlatform}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, listingPlatform: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Listing Platform" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+              />
             </Grid>
 
             {/* Store Filter */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Store</InputLabel>
-                <Select
-                  label="Store"
-                  value={filters.store}
-                  onChange={(e) => setFilters(f => ({ ...f, store: e.target.value }))}
-                >
-                  <MenuItem value="">All Stores</MenuItem>
-                  {uniqueStores.map(st => (
-                    <MenuItem key={st} value={st}>{st}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                size="small"
+                options={allStores}
+                getOptionLabel={(option) => option.name || ''}
+                value={filters.store}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, store: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Store" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+              />
             </Grid>
 
             {/* Marketplace Filter */}
@@ -332,7 +302,7 @@ export default function ProgressTrackingPage() {
                   onChange={(e) => setFilters(f => ({ ...f, marketplace: e.target.value }))}
                 >
                   <MenuItem value="">All Marketplaces</MenuItem>
-                  {uniqueMarketplaces.map(mp => (
+                  {allMarketplaces.map(mp => (
                     <MenuItem key={mp} value={mp}>{mp.replace('EBAY_', 'eBay ').replace('_', ' ')}</MenuItem>
                   ))}
                 </Select>
@@ -341,19 +311,15 @@ export default function ProgressTrackingPage() {
 
             {/* Editor Filter */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Editor</InputLabel>
-                <Select
-                  label="Editor"
-                  value={filters.editor}
-                  onChange={(e) => setFilters(f => ({ ...f, editor: e.target.value }))}
-                >
-                  <MenuItem value="">All Editors</MenuItem>
-                  {uniqueEditors.map(editor => (
-                    <MenuItem key={editor} value={editor}>{editor}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                size="small"
+                options={allEditors}
+                getOptionLabel={(option) => option.username || ''}
+                value={filters.editor}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, editor: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Editor" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+              />
             </Grid>
 
             {/* Pending Filter */}
@@ -387,10 +353,10 @@ export default function ProgressTrackingPage() {
               </Grid>
             )}
           </Grid>
-        
+        </Paper>
       </Collapse>
 
-      
+      <Paper sx={{ width: '100%', overflow: 'auto' }}>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -413,7 +379,7 @@ export default function ProgressTrackingPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredItems.map(item => (
+            {items.map(item => (
               <TableRow key={item._id}>
                 <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
                 
@@ -461,26 +427,7 @@ export default function ProgressTrackingPage() {
               </TableRow>
             ))}
 
-            {/* Summary Row */}
-            {filteredItems.length > 0 && (
-              <TableRow sx={{ backgroundColor: 'action.hover', fontWeight: 'bold' }}>
-                <TableCell colSpan={6} sx={{ fontWeight: 'bold' }}>
-                  <Typography variant="body2" fontWeight="bold">
-                    Total ({totals.count} items)
-                  </Typography>
-                </TableCell>
-                <TableCell>-</TableCell>
-                <TableCell>-</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>{totals.totalQty}</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>{totals.completed}</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>{totals.pending}</TableCell>
-                <TableCell>-</TableCell>
-                <TableCell>-</TableCell>
-                <TableCell>-</TableCell>
-              </TableRow>
-            )}
-
-            {filteredItems.length === 0 && (
+            {items.length === 0 && !loading && (
               <TableRow>
                 <TableCell colSpan={15} align="center">
                   <Typography variant="body2" color="text.secondary">
@@ -489,9 +436,36 @@ export default function ProgressTrackingPage() {
                 </TableCell>
               </TableRow>
             )}
+            
+            {loading && (
+              <TableRow>
+                <TableCell colSpan={15} align="center">
+                  <Typography variant="body2" color="text.secondary">
+                    Loading...
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
+      </Paper>
       
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {items.length} of {totalItems} items
+          </Typography>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={(e, value) => setPage(value)}
+            color="primary"
+            showFirstButton 
+            showLastButton
+          />
+        </Box>
+      )}
     </Box>
   );
 }

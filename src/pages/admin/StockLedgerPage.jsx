@@ -32,31 +32,39 @@ export default function StockLedgerPage() {
 
   const [platforms, setPlatforms] = useState([]);
   const [stores, setStores] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
+  const [allRanges, setAllRanges] = useState([]);
 
-  // Load platforms/stores for filter dropdowns
+  // Load platforms/stores/categories/ranges for filter dropdowns
   useEffect(() => {
     (async () => {
       try {
-        const [plats, strs] = await Promise.all([
-          api.get('/platforms'), // you already have this in your admin menu
-          api.get('/stores')     // existing route to list stores
+        const [plats, strs, cats, rngs] = await Promise.all([
+          api.get('/platforms'),
+          api.get('/stores'),
+          api.get('/categories'),
+          api.get('/ranges')
         ]);
         setPlatforms(plats.data || []);
         setStores(strs.data || []);
+        setAllCategories(cats.data?.map(c => c.name) || []);
+        setAllRanges(rngs.data?.map(r => r.name) || []);
       } catch (e) {
         console.error(e);
       }
     })();
   }, []);
 
-  // Load ledger with server-side filters for platformId / storeId
+  // Load ledger with server-side filters
   const fetchLedger = async () => {
     setLoading(true);
     try {
       const params = {};
       if (filters.platformId) params.platformId = filters.platformId;
       if (filters.storeId) params.storeId = filters.storeId;
-      // NOTE: category & range are filtered client-side to keep API simple
+      if (filters.category.length) params.category = filters.category.join(',');
+      if (filters.range.length) params.range = filters.range.join(',');
+      
       const res = await api.get('/assignments/analytics/stock-ledger', { params });
       setRows(res.data || []);
     } catch (e) {
@@ -66,11 +74,7 @@ export default function StockLedgerPage() {
     }
   };
 
-  useEffect(() => { fetchLedger(); /* eslint-disable-next-line */ }, [filters.platformId, filters.storeId]);
-
-  // Derive category/range options from loaded rows (keeps it in sync)
-  const allCategories = useMemo(() => unique(rows.map(r => r.category)), [rows]);
-  const allRanges = useMemo(() => unique(rows.map(r => r.range)), [rows]);
+  useEffect(() => { fetchLedger(); /* eslint-disable-next-line */ }, [filters]);
 
   const handleMultiChange = (key) => (e) => {
     const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
@@ -79,14 +83,8 @@ export default function StockLedgerPage() {
 
   const clearAll = () => setFilters({ platformId: '', storeId: '', category: [], range: [] });
 
-  // Client-side filter for category/range
-  const filtered = useMemo(() => {
-    return rows.filter(r => {
-      if (filters.category.length && !filters.category.includes(r.category)) return false;
-      if (filters.range.length && !filters.range.includes(r.range)) return false;
-      return true;
-    });
-  }, [rows, filters.category, filters.range]);
+  // No client-side filtering - backend handles it
+  const filtered = rows;
 
   const totals = useMemo(() => {
     const c = filtered.reduce((acc, r) => acc + (Number(r.totalCompleted) || 0), 0);

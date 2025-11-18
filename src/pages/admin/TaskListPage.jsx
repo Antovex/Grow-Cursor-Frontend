@@ -1,5 +1,5 @@
 // src/pages/admin/TaskListPage.jsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -33,6 +33,8 @@ import {
   DialogContent,
   DialogTitle,
   Alert,
+  Pagination,
+  Autocomplete,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -71,6 +73,27 @@ export default function TaskListPage() {
   const [expandedRows, setExpandedRows] = useState({}); // { [assignmentId]: true/false }
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const isFirstRender = useRef(true);
+  const isFilterChange = useRef(false); // Track if page change is due to filter
+  
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 50;
+
+  // Filter options from backend
+  const [filterOptions, setFilterOptions] = useState({
+    sourcePlatforms: [],
+    listingPlatforms: [],
+    stores: [],
+    categories: [],
+    subcategories: [],
+    listers: [],
+    assigners: [],
+    taskCreators: [],
+    marketplaces: []
+  });
 
   // ====== FILTER STATE (trimmed to only requested ones) ======
   const [filters, setFilters] = useState({
@@ -140,17 +163,131 @@ export default function TaskListPage() {
   };
 
   // ====== DATA FETCH ======
-  const loadItems = async () => {
+  const loadItems = async (pageOverride) => {
     try {
-      const { data } = await api.get('/assignments', { params: { sortBy: 'createdAt', sortOrder: 'desc' } });
-      const list = Array.isArray(data) ? data : (data.items || data.assignments || []);
-      setItems(list);
+      const currentPage = pageOverride !== undefined ? pageOverride : page;
+      const params = { 
+        sortBy: 'createdAt', 
+        sortOrder: 'desc',
+        page: currentPage,
+        limit
+      };
+
+      // Add filter parameters
+      if (filters.date.mode === 'single' && filters.date.single) {
+        params.dateMode = 'single';
+        params.dateSingle = filters.date.single;
+      } else if (filters.date.mode === 'range') {
+        params.dateMode = 'range';
+        if (filters.date.from) params.dateFrom = filters.date.from;
+        if (filters.date.to) params.dateTo = filters.date.to;
+      }
+
+      if (filters.productTitle.contains) {
+        params.productTitle = filters.productTitle.contains;
+      }
+
+      if (filters.sourcePlatform.in.length) {
+        params.sourcePlatform = filters.sourcePlatform.in.join(',');
+      }
+
+      if (filters.category.in.length) {
+        params.category = filters.category.in.join(',');
+      }
+
+      if (filters.subcategory.in.length) {
+        params.subcategory = filters.subcategory.in.join(',');
+      }
+
+      if (filters.createdByTask.in.length) {
+        params.createdByTask = filters.createdByTask.in.join(',');
+      }
+
+      if (filters.listingPlatform.in.length) {
+        params.platformId = filters.listingPlatform.in[0]._id || filters.listingPlatform.in[0]; // Extract ID from object
+      }
+
+      if (filters.store.in.length) {
+        params.storeId = filters.store.in[0]._id || filters.store.in[0]; // Extract ID from object
+      }
+
+      if (filters.marketplace.in.length) {
+        params.marketplace = filters.marketplace.in[0]; // Single marketplace for now
+      }
+
+      if (filters.lister.in.length) {
+        params.listerUsername = filters.lister.in.join(',');
+      }
+
+      if (filters.sharedBy.in.length) {
+        params.sharedBy = filters.sharedBy.in.join(',');
+      }
+
+      const { data } = await api.get('/assignments', { params });
+      
+      // Check if the response is paginated
+      if (data.items) {
+        setItems(data.items);
+        setTotal(data.total || 0);
+        setTotalPages(Math.ceil((data.total || 0) / limit));
+      } else {
+        // Fallback for non-paginated response
+        const list = Array.isArray(data) ? data : (data.assignments || []);
+        setItems(list);
+        setTotal(list.length);
+        setTotalPages(1);
+      }
     } catch (e) {
       alert('Failed to fetch tasks.');
     }
   };
 
-  useEffect(() => { loadItems(); }, []);
+  const loadFilterOptions = async () => {
+    try {
+      const { data } = await api.get('/assignments/filter-options');
+      setFilterOptions(data);
+    } catch (e) {
+      console.error('Failed to fetch filter options:', e);
+    }
+  };
+
+  useEffect(() => { 
+    loadFilterOptions();
+    loadItems(1); // Initial load
+    isFirstRender.current = false; // Mark first render complete
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When filters change, reset to page 1 and reload (skip on first render)
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    isFilterChange.current = true; // Mark as filter-triggered change
+    setPage(1);
+    loadItems(1); // Force load with page 1
+  }, [
+    filters.date.mode,
+    filters.date.single,
+    filters.date.from,
+    filters.date.to,
+    filters.productTitle.contains,
+    JSON.stringify(filters.sourcePlatform.in),
+    JSON.stringify(filters.category.in),
+    JSON.stringify(filters.subcategory.in),
+    JSON.stringify(filters.createdByTask.in),
+    JSON.stringify(filters.listingPlatform.in),
+    JSON.stringify(filters.store.in),
+    JSON.stringify(filters.marketplace.in),
+    JSON.stringify(filters.lister.in),
+    JSON.stringify(filters.sharedBy.in)
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load data when page changes
+  useEffect(() => { 
+    if (isFilterChange.current) {
+      isFilterChange.current = false; // Reset flag
+      return; // Skip loading, filter effect already loaded
+    }
+    loadItems();
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openDelete = (row) => {
     setDeleteTarget(row);
@@ -170,38 +307,14 @@ export default function TaskListPage() {
     }
   };
 
-  // ====== OPTION LISTS (enums/relations pulled from data) ======
-  const enumOptions = useMemo(
-    () => ({
-      sourcePlatform: unique(items.map(A.sourcePlatform)),
-      category: unique(items.map(A.category)),
-      subcategory: unique(items.map(A.subcategory)),
-      createdByTask: unique(items.map(A.createdByTask)),
-      listingPlatform: unique(items.map(A.listingPlatform)),
-      store: unique(items.map(A.store)),
-      marketplace: unique(items.map(A.marketplace)),
-      lister: unique(items.map(A.lister)),
-      sharedBy: unique(items.map(A.sharedBy)),
-    }),
-    [items]
-  );
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    loadItems(value); // Load immediately with new page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-  // ====== FILTERED LIST (only trimmed filters applied) ======
-  const filteredItems = useMemo(() => {
-    return items.filter((r) =>
-      matchesDate(A.date(r), filters.date) &&
-      matchesText(A.productTitle(r), filters.productTitle.contains) &&
-      matchesEnum(A.sourcePlatform(r), filters.sourcePlatform.in) &&
-      matchesEnum(A.category(r), filters.category.in) &&
-      matchesEnum(A.subcategory(r), filters.subcategory.in) &&
-      matchesEnum(A.createdByTask(r), filters.createdByTask.in) &&
-      matchesEnum(A.listingPlatform(r), filters.listingPlatform.in) &&
-      matchesEnum(A.store(r), filters.store.in) &&
-      matchesEnum(A.marketplace(r), filters.marketplace.in) &&
-      matchesEnum(A.lister(r), filters.lister.in) &&
-      matchesEnum(A.sharedBy(r), filters.sharedBy.in)
-    );
-  }, [items, filters]);
+  // No more client-side filtering - backend handles it all
+  const filteredItems = items;
 
   // ====== ACTIVE FILTER COUNT (for badge) ======
   const activeCount = useMemo(() => {
@@ -261,7 +374,7 @@ export default function TaskListPage() {
               <FilterListIcon fontSize="small" /> Filters
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Showing <b>{filteredItems.length}</b> of {items.length}
+              Showing <b>{items.length}</b> of {total} total
             </Typography>
           </Stack>
 
@@ -365,46 +478,163 @@ export default function TaskListPage() {
               />
             </Grid>
 
-            {/* Multi-select enums/relations (only the ones you want) */}
-            {[
-              ['sourcePlatform', 'Source Platform'],
-              ['category', 'Category'],
-              ['subcategory', 'Subcategory'],
-              ['createdByTask', 'Created By'],
-              ['listingPlatform', 'Listing Platform'],
-              ['store', 'Store'],
-              ['marketplace', 'Marketplace'],
-              ['lister', 'Lister'],
-              ['sharedBy', 'Shared By'],
-            ].map(([key, label]) => (
-              <Grid item xs={12} sm={6} md={3} key={key}>
-                <FormControl fullWidth size="small">
-                  <InputLabel id={`${key}-label`}>{label}</InputLabel>
-                  <Select
-                    labelId={`${key}-label`}
-                    multiple
-                    value={filters[key].in}
-                    onChange={handleMultiChange(key)}
-                    input={<OutlinedInput label={label} />}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={key === 'marketplace' ? value?.replace('EBAY_', 'eBay ')?.replace('_', ' ') : value} size="small" />
-                        ))}
-                      </Box>
-                    )}
-                    MenuProps={MenuProps}
-                  >
-                    {enumOptions[key].map((name) => (
-                      <MenuItem key={name} value={name}>
-                        <Checkbox size="small" checked={filters[key].in.indexOf(name) > -1} />
-                        <ListItemText primary={key === 'marketplace' ? name?.replace('EBAY_', 'eBay ')?.replace('_', ' ') : name} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            ))}
+            {/* Source Platform Autocomplete */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={filterOptions.sourcePlatforms.map(p => p.name)}
+                value={filters.sourcePlatform.in}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, sourcePlatform: { in: newValue } }))}
+                renderInput={(params) => <TextField {...params} label="Source Platform" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
+            </Grid>
+
+            {/* Category Autocomplete */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={filterOptions.categories.map(c => c.name)}
+                value={filters.category.in}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, category: { in: newValue } }))}
+                renderInput={(params) => <TextField {...params} label="Category" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
+            </Grid>
+
+            {/* Subcategory Autocomplete */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={filterOptions.subcategories.map(s => s.name)}
+                value={filters.subcategory.in}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, subcategory: { in: newValue } }))}
+                renderInput={(params) => <TextField {...params} label="Subcategory" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
+            </Grid>
+
+            {/* Created By (Task) Autocomplete */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={filterOptions.taskCreators.map(t => t.username)}
+                value={filters.createdByTask.in}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, createdByTask: { in: newValue } }))}
+                renderInput={(params) => <TextField {...params} label="Created By" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
+            </Grid>
+
+            {/* Listing Platform Autocomplete */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={filterOptions.listingPlatforms}
+                value={filters.listingPlatform.in}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, listingPlatform: { in: newValue } }))}
+                getOptionLabel={(option) => option?.name || option}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+                renderInput={(params) => <TextField {...params} label="Listing Platform" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option?.name || option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
+            </Grid>
+
+            {/* Store Autocomplete */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={filterOptions.stores}
+                value={filters.store.in}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, store: { in: newValue } }))}
+                getOptionLabel={(option) => option?.name || option}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+                renderInput={(params) => <TextField {...params} label="Store" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option?.name || option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
+            </Grid>
+
+            {/* Marketplace Autocomplete */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={filterOptions.marketplaces}
+                value={filters.marketplace.in}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, marketplace: { in: newValue } }))}
+                getOptionLabel={(option) => option?.replace('EBAY_', 'eBay ')?.replace('_', ' ') || option}
+                renderInput={(params) => <TextField {...params} label="Marketplace" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option?.replace('EBAY_', 'eBay ')?.replace('_', ' ')} {...getTagProps({ index })} />
+                  ))
+                }
+              />
+            </Grid>
+
+            {/* Lister Autocomplete */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={filterOptions.listers.map(l => l.username)}
+                value={filters.lister.in}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, lister: { in: newValue } }))}
+                renderInput={(params) => <TextField {...params} label="Lister" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
+            </Grid>
+
+            {/* Shared By Autocomplete */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={filterOptions.assigners.map(a => a.username)}
+                value={filters.sharedBy.in}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, sharedBy: { in: newValue } }))}
+                renderInput={(params) => <TextField {...params} label="Shared By" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip size="small" label={option} {...getTagProps({ index })} />
+                  ))
+                }
+              />
+            </Grid>
           </Grid>
         </Collapse>
       </Paper>
@@ -448,7 +678,7 @@ export default function TaskListPage() {
               return (
                 <>
                   <TableRow key={it._id || idx} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'action.hover' } }}>
-                    <TableCell>{idx + 1}</TableCell>
+                    <TableCell>{(page - 1) * limit + idx + 1}</TableCell>
                     <TableCell>{toISTYMD(it.createdAt)}</TableCell>
                     
                     <TableCell sx={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -530,6 +760,20 @@ export default function TaskListPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Paper sx={{ p: 2, mt: 2, display: 'flex', justifyContent: 'center' }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Paper>
+      )}
 
       {/* Delete confirmation dialog */}
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="sm" fullWidth>

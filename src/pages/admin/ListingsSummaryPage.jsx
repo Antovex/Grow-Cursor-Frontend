@@ -67,27 +67,18 @@ export default function ListingsSummaryPage() {
       if (platformId) params.platformId = platformId;
       if (storeId) params.storeId = storeId;
 
+      // Add date filter parameters
+      if (dateFilter.mode === 'single' && dateFilter.single) {
+        params.dateMode = 'single';
+        params.dateSingle = dateFilter.single;
+      } else if (dateFilter.mode === 'range') {
+        params.dateMode = 'range';
+        if (dateFilter.from) params.dateFrom = dateFilter.from;
+        if (dateFilter.to) params.dateTo = dateFilter.to;
+      }
+
       const res = await api.get('/assignments/analytics/listings-summary', { params });
-      let filteredData = res.data || [];
-
-      // Client-side date filtering (like TaskListPage)
-      const matchesDate = (rowDate, filter) => {
-        if (!rowDate) return false;
-        if (filter.mode === 'none') return true;
-        const ymd = rowDate;
-        if (filter.mode === 'single') return filter.single ? ymd === filter.single : true;
-        if (filter.mode === 'range') {
-          if (!filter.from && !filter.to) return true;
-          if (filter.from && ymd < filter.from) return false;
-          if (filter.to && ymd > filter.to) return false;
-          return true;
-        }
-        return true;
-      };
-
-      filteredData = filteredData.filter(row => matchesDate(row.date, dateFilter));
-
-      setRows(filteredData);
+      setRows(res.data || []);
     } catch (e) {
       setRows([]);
     } finally {
@@ -105,7 +96,6 @@ export default function ListingsSummaryPage() {
   const processedRows = useMemo(() =>
     rows.map(r => ({
       ...r,
-      completedQty: r.completedQty ?? 0
     })),
     [rows]
   );
@@ -233,26 +223,26 @@ export default function ListingsSummaryPage() {
                 <TableCell>Platform</TableCell>
                 <TableCell>Store</TableCell>
                 <TableCell>Listing Quantity</TableCell>
-                
               </TableRow>
             </TableHead>
             <TableBody>
-              {processedRows.map((r, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>
-                    {r.date ?? '\u2014'}
-                  </TableCell>
-                  <TableCell>{r.platform || '\u2014'}</TableCell>
-                  <TableCell>{r.store || '\u2014'}</TableCell>
-                  <TableCell>{r.totalQuantity ?? 0}</TableCell>
-                  
-                </TableRow>
-              ))}
+              {processedRows.map((r, idx) => {
+                const assigned = r.totalQuantity ?? 0;
+                return (
+                  <TableRow key={idx}>
+                    <TableCell>
+                      {r.date ?? '\u2014'}
+                    </TableCell>
+                    <TableCell>{r.platform || '\u2014'}</TableCell>
+                    <TableCell>{r.store || '\u2014'}</TableCell>
+                    <TableCell>{assigned}</TableCell>
+                  </TableRow>
+                );
+              })}
               {/* Totals row */}
               <TableRow>
                 <TableCell colSpan={3} sx={{ fontWeight: 'bold' }}>Total</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>{totals.totalQuantity}</TableCell>
-                
               </TableRow>
             </TableBody>
           </Table>

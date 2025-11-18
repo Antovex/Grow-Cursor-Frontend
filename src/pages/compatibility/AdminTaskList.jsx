@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   Box, Paper, Table, TableHead, TableRow, TableCell, TableBody, Button, Dialog, DialogTitle, DialogContent,
   DialogActions, Stack, FormControl, InputLabel, Select, MenuItem, TextField, Typography, Chip,
-  IconButton, Checkbox
+  IconButton, Checkbox, Pagination, Autocomplete, Grid, Collapse, Badge
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
 import api from '../../lib/api.js';
 
 export default function AdminTaskList() {
@@ -14,27 +16,76 @@ export default function AdminTaskList() {
   const [sharing, setSharing] = useState(null);
   const [form, setForm] = useState({ editorId: '', rangeQuantities: [], notes: '' });
   const [loading, setLoading] = useState(false);
-    // Track shared status for assignments (persisted)
-    const [sharedStatus, setSharedStatus] = useState({});
+  const [sharedStatus, setSharedStatus] = useState({});
+  
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const itemsPerPage = 50;
+  
+  // Filter options from database
+  const [allSubcategories, setAllSubcategories] = useState([]);
+  const [allListingPlatforms, setAllListingPlatforms] = useState([]);
+  const [allStores, setAllStores] = useState([]);
+  const [allMarketplaces, setAllMarketplaces] = useState([]);
+  const [openFilters, setOpenFilters] = useState(false);
+  
+  // Refs for proper filter/page handling
+  const isFirstRender = useRef(true);
+  const isFilterChange = useRef(false);
+  
+  // Filter state
+  const [filters, setFilters] = useState({
+    date: { mode: 'none', single: '', from: '', to: '' },
+    subcategory: null,
+    listingPlatform: null,
+    store: null,
+    marketplace: '',
+    sharedStatus: '', // 'shared' | 'notShared' | ''
+  });
 
-  const load = async () => {
+
+  const loadFilterOptions = async () => {
+    try {
+      const { data } = await api.get('/compatibility/eligible-filter-options');
+      setAllSubcategories(data.subcategories || []);
+      setAllListingPlatforms(data.listingPlatforms || []);
+      setAllStores(data.stores || []);
+      setAllMarketplaces(data.marketplaces || []);
+    } catch (e) {
+      console.error('Failed to load filter options', e);
+    }
+  };
+
+  const load = async (pageOverride) => {
+    const currentPage = pageOverride !== undefined ? pageOverride : page;
     setLoading(true);
     try {
+      const params = {
+        page: currentPage,
+        limit: itemsPerPage,
+        dateMode: filters.date.mode,
+        dateSingle: filters.date.single,
+        dateFrom: filters.date.from,
+        dateTo: filters.date.to,
+        subcategory: filters.subcategory?._id || '',
+        listingPlatform: filters.listingPlatform?._id || '',
+        store: filters.store?._id || '',
+        marketplace: filters.marketplace,
+        sharedStatus: filters.sharedStatus,
+      };
+      
       const [{ data: eligible }, { data: editors }] = await Promise.all([
-        api.get('/compatibility/eligible'),
+        api.get('/compatibility/eligible', { params }),
         api.get('/users/compatibility-editors')
       ]);
-      setAssignments(eligible || []);
+      
+      setAssignments(eligible.items || []);
+      setTotalItems(eligible.totalItems || 0);
+      setTotalPages(eligible.totalPages || 0);
       setEditors(editors || []);
-
-        // Fetch compatibility assignments to check shared status
-        const { data: compat } = await api.get('/compatibility/progress');
-        // Map sourceAssignmentId to true if any compatibility assignment exists
-        const sharedMap = {};
-        (compat || []).forEach(ca => {
-          if (ca.sourceAssignment?._id) sharedMap[ca.sourceAssignment._id] = true;
-        });
-        setSharedStatus(sharedMap);
+      setSharedStatus(eligible.sharedStatus || {});
     } catch (e) {
       console.error(e);
     } finally {
@@ -42,7 +93,46 @@ export default function AdminTaskList() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    loadFilterOptions();
+  }, []);
+  
+  // Load data on mount
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      load(1);
+      return;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // When any filter changes, reset to page 1
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    isFilterChange.current = true;
+    setPage(1);
+    load(1);
+  }, [
+    filters.date.mode,
+    filters.date.single,
+    filters.date.from,
+    filters.date.to,
+    filters.subcategory,
+    filters.listingPlatform,
+    filters.store,
+    filters.marketplace,
+    filters.sharedStatus
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // When page changes (but not due to filter change)
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    if (isFilterChange.current) {
+      isFilterChange.current = false;
+      return;
+    }
+    load();
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openShare = (assignment) => {
     setSharing(assignment);
@@ -101,11 +191,192 @@ export default function AdminTaskList() {
       alert('Failed to assign compatibility task');
     }
   };
+  
+  // Active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.date.mode === 'single' && filters.date.single) count++;
+    if (filters.date.mode === 'range' && (filters.date.from || filters.date.to)) count++;
+    if (filters.subcategory) count++;
+    if (filters.listingPlatform) count++;
+    if (filters.store) count++;
+    if (filters.marketplace) count++;
+    if (filters.sharedStatus) count++;
+    return count;
+  }, [filters]);
+  
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      date: { mode: 'none', single: '', from: '', to: '' },
+      subcategory: null,
+      listingPlatform: null,
+      store: null,
+      marketplace: '',
+      sharedStatus: '',
+    });
+  };
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb:2 }}>Compatibility Admin - Ebay Motors</Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="h6">Compatibility Admin - Ebay Motors</Typography>
+        <Stack direction="row" spacing={1}>
+          <Badge badgeContent={activeFilterCount} color="primary">
+            <IconButton 
+              size="small" 
+              onClick={() => setOpenFilters(!openFilters)}
+              color={openFilters ? 'primary' : 'default'}
+            >
+              <FilterListIcon />
+            </IconButton>
+          </Badge>
+          {activeFilterCount > 0 && (
+            <IconButton size="small" onClick={clearFilters} title="Clear all filters">
+              <ClearAllIcon />
+            </IconButton>
+          )}
+        </Stack>
+      </Stack>
       
+      {/* Filters Section */}
+      <Collapse in={openFilters}>
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 2 }}>Filters</Typography>
+          <Grid container spacing={2}>
+            {/* Date Filter */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Date Filter</InputLabel>
+                <Select
+                  label="Date Filter"
+                  value={filters.date.mode}
+                  onChange={(e) => setFilters(f => ({ ...f, date: { ...f.date, mode: e.target.value } }))}
+                >
+                  <MenuItem value="none">No Date Filter</MenuItem>
+                  <MenuItem value="single">Single Date</MenuItem>
+                  <MenuItem value="range">Date Range</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {filters.date.mode === 'single' && (
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="date"
+                  label="Select Date"
+                  InputLabelProps={{ shrink: true }}
+                  value={filters.date.single}
+                  onChange={(e) => setFilters(f => ({ ...f, date: { ...f.date, single: e.target.value } }))}
+                />
+              </Grid>
+            )}
+
+            {filters.date.mode === 'range' && (
+              <>
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    label="From Date"
+                    InputLabelProps={{ shrink: true }}
+                    value={filters.date.from}
+                    onChange={(e) => setFilters(f => ({ ...f, date: { ...f.date, from: e.target.value } }))}
+                  />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    label="To Date"
+                    InputLabelProps={{ shrink: true }}
+                    value={filters.date.to}
+                    onChange={(e) => setFilters(f => ({ ...f, date: { ...f.date, to: e.target.value } }))}
+                  />
+                </Grid>
+              </>
+            )}
+
+            {/* Subcategory Filter */}
+            <Grid item xs={12} md={6}>
+              <Autocomplete
+                size="small"
+                options={allSubcategories}
+                getOptionLabel={(option) => option.name || ''}
+                value={filters.subcategory}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, subcategory: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Subcategory" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+              />
+            </Grid>
+
+            {/* Listing Platform Filter */}
+            <Grid item xs={12} md={6}>
+              <Autocomplete
+                size="small"
+                options={allListingPlatforms}
+                getOptionLabel={(option) => option.name || ''}
+                value={filters.listingPlatform}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, listingPlatform: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Listing Platform" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+              />
+            </Grid>
+
+            {/* Store Filter */}
+            <Grid item xs={12} md={6}>
+              <Autocomplete
+                size="small"
+                options={allStores}
+                getOptionLabel={(option) => option.name || ''}
+                value={filters.store}
+                onChange={(e, newValue) => setFilters(f => ({ ...f, store: newValue }))}
+                renderInput={(params) => <TextField {...params} label="Store" />}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+              />
+            </Grid>
+
+            {/* Marketplace Filter */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Marketplace</InputLabel>
+                <Select
+                  label="Marketplace"
+                  value={filters.marketplace}
+                  onChange={(e) => setFilters(f => ({ ...f, marketplace: e.target.value }))}
+                >
+                  <MenuItem value="">All Marketplaces</MenuItem>
+                  {allMarketplaces.map(mp => (
+                    <MenuItem key={mp} value={mp}>{mp.replace('EBAY_', 'eBay ').replace('_', ' ')}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Shared Status Filter */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Shared Status</InputLabel>
+                <Select
+                  label="Shared Status"
+                  value={filters.sharedStatus}
+                  onChange={(e) => setFilters(f => ({ ...f, sharedStatus: e.target.value }))}
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="shared">Shared</MenuItem>
+                  <MenuItem value="notShared">Not Shared</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Collapse>
+      
+      <Paper sx={{ width: '100%', overflow: 'auto', mb: 2 }}>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -120,7 +391,7 @@ export default function AdminTaskList() {
               <TableCell>Store</TableCell>
               <TableCell>Marketplace</TableCell>
               <TableCell>Range Quantity Breakdown</TableCell>
-                  <TableCell>Shared</TableCell>
+              <TableCell>Shared</TableCell>
               <TableCell>Action</TableCell>
             </TableRow>
           </TableHead>
@@ -148,13 +419,13 @@ export default function AdminTaskList() {
                     ))}
                   </Stack>
                 </TableCell>
-                  <TableCell>
-                    {sharedStatus[a._id] ? (
-                      <Chip label="Shared" color="success" size="small" />
-                    ) : (
-                      <Chip label="Not Shared" color="default" size="small" />
-                    )}
-                  </TableCell>
+                <TableCell>
+                  {sharedStatus[a._id] ? (
+                    <Chip label="Shared" color="success" size="small" />
+                  ) : (
+                    <Chip label="Not Shared" color="default" size="small" />
+                  )}
+                </TableCell>
                 <TableCell>
                   <Button size="small" variant="contained" onClick={() => openShare(a)}>
                     Share
@@ -162,7 +433,7 @@ export default function AdminTaskList() {
                 </TableCell>
               </TableRow>
             ))}
-            {assignments.length === 0 && (
+            {assignments.length === 0 && !loading && (
               <TableRow>
                 <TableCell colSpan={12} align="center">
                   <Typography variant="body2" color="text.secondary">
@@ -171,9 +442,35 @@ export default function AdminTaskList() {
                 </TableCell>
               </TableRow>
             )}
+            {loading && (
+              <TableRow>
+                <TableCell colSpan={12} align="center">
+                  <Typography variant="body2" color="text.secondary">
+                    Loading...
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
+      </Paper>
       
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2, gap: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {assignments.length} of {totalItems} items
+          </Typography>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={(e, value) => setPage(value)}
+            color="primary"
+            showFirstButton 
+            showLastButton
+          />
+        </Box>
+      )}
 
       <Dialog open={shareOpen} onClose={() => setShareOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Share Task with Compatibility Editor</DialogTitle>
