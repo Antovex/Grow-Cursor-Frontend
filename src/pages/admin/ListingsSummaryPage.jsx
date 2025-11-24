@@ -219,7 +219,7 @@ export default function ListingsSummaryPage() {
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell>Date (assigned)</TableCell>
+                <TableCell>Scheduled Date</TableCell>
                 <TableCell>Platform</TableCell>
                 <TableCell>Store</TableCell>
                 <TableCell>Listing Quantity</TableCell>

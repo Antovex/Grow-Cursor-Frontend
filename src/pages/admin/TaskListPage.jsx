@@ -97,7 +97,8 @@ export default function TaskListPage() {
 
   // ====== FILTER STATE (trimmed to only requested ones) ======
   const [filters, setFilters] = useState({
-    date: { mode: 'none', single: '', from: '', to: '' }, // 'none' | 'single' | 'range'
+    date: { mode: 'none', single: '', from: '', to: '' }, // 'none' | 'single' | 'range' (created date)
+    scheduledDate: { mode: 'none', single: '', from: '', to: '' }, // 'none' | 'single' | 'range' (scheduled date)
     productTitle: { contains: '' },
     sourcePlatform: { in: [] },   // task.sourcePlatform.name
     category: { in: [] },
@@ -181,6 +182,16 @@ export default function TaskListPage() {
         params.dateMode = 'range';
         if (filters.date.from) params.dateFrom = filters.date.from;
         if (filters.date.to) params.dateTo = filters.date.to;
+      }
+
+      // Add scheduled date filter parameters
+      if (filters.scheduledDate.mode === 'single' && filters.scheduledDate.single) {
+        params.scheduledDateMode = 'single';
+        params.scheduledDateSingle = filters.scheduledDate.single;
+      } else if (filters.scheduledDate.mode === 'range') {
+        params.scheduledDateMode = 'range';
+        if (filters.scheduledDate.from) params.scheduledDateFrom = filters.scheduledDate.from;
+        if (filters.scheduledDate.to) params.scheduledDateTo = filters.scheduledDate.to;
       }
 
       if (filters.productTitle.contains) {
@@ -268,6 +279,10 @@ export default function TaskListPage() {
     filters.date.single,
     filters.date.from,
     filters.date.to,
+    filters.scheduledDate.mode,
+    filters.scheduledDate.single,
+    filters.scheduledDate.from,
+    filters.scheduledDate.to,
     filters.productTitle.contains,
     JSON.stringify(filters.sourcePlatform.in),
     JSON.stringify(filters.category.in),
@@ -321,6 +336,8 @@ export default function TaskListPage() {
     let n = 0;
     if (filters.date.mode === 'single' && filters.date.single) n++;
     if (filters.date.mode === 'range' && (filters.date.from || filters.date.to)) n++;
+    if (filters.scheduledDate.mode === 'single' && filters.scheduledDate.single) n++;
+    if (filters.scheduledDate.mode === 'range' && (filters.scheduledDate.from || filters.scheduledDate.to)) n++;
     if (filters.productTitle.contains) n++;
     ['sourcePlatform','category','subcategory','createdByTask','listingPlatform','store','marketplace','lister','sharedBy']
       .forEach(k => { if (filters[k].in.length) n++; });
@@ -338,6 +355,7 @@ export default function TaskListPage() {
   const clearAll = () =>
     setFilters({
       date: { mode: 'none', single: '', from: '', to: '' },
+      scheduledDate: { mode: 'none', single: '', from: '', to: '' },
       productTitle: { contains: '' },
       sourcePlatform: { in: [] },
       category: { in: [] },
@@ -399,14 +417,14 @@ export default function TaskListPage() {
           <Divider sx={{ my: 1 }} />
           {/* FILTER GRID (only requested filters) */}
           <Grid container spacing={1} alignItems="center">
-            {/* Date mode & pickers */}
+            {/* Date mode & pickers (Created Date) */}
             <Grid item xs={12} sm={6} md={3}>
               <FormControl fullWidth size="small">
-                <InputLabel id="date-mode-label">Date mode</InputLabel>
+                <InputLabel id="date-mode-label">Created Date mode</InputLabel>
                 <Select
                   labelId="date-mode-label"
                   value={filters.date.mode}
-                  label="Date mode"
+                  label="Created Date mode"
                   onChange={(e) =>
                     setFilters((f) => ({ ...f, date: { ...f.date, mode: e.target.value } }))
                   }
@@ -423,7 +441,7 @@ export default function TaskListPage() {
                 <TextField
                   size="small"
                   type="date"
-                  label="Date"
+                  label="Created Date"
                   InputLabelProps={{ shrink: true }}
                   fullWidth
                   value={filters.date.single}
@@ -440,7 +458,7 @@ export default function TaskListPage() {
                   <TextField
                     size="small"
                     type="date"
-                    label="From"
+                    label="Created From"
                     InputLabelProps={{ shrink: true }}
                     fullWidth
                     value={filters.date.from}
@@ -453,12 +471,78 @@ export default function TaskListPage() {
                   <TextField
                     size="small"
                     type="date"
-                    label="To"
+                    label="Created To"
                     InputLabelProps={{ shrink: true }}
                     fullWidth
                     value={filters.date.to}
                     onChange={(e) =>
                       setFilters((f) => ({ ...f, date: { ...f.date, to: e.target.value } }))
+                    }
+                  />
+                </Grid>
+              </>
+            )}
+
+            {/* Scheduled Date mode & pickers */}
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="scheduled-date-mode-label">Scheduled Date mode</InputLabel>
+                <Select
+                  labelId="scheduled-date-mode-label"
+                  value={filters.scheduledDate.mode}
+                  label="Scheduled Date mode"
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, scheduledDate: { ...f.scheduledDate, mode: e.target.value } }))
+                  }
+                >
+                  <MenuItem value="none">None</MenuItem>
+                  <MenuItem value="single">Single day</MenuItem>
+                  <MenuItem value="range">Range</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {filters.scheduledDate.mode === 'single' && (
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  size="small"
+                  type="date"
+                  label="Scheduled Date"
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                  value={filters.scheduledDate.single}
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, scheduledDate: { ...f.scheduledDate, single: e.target.value } }))
+                  }
+                />
+              </Grid>
+            )}
+
+            {filters.scheduledDate.mode === 'range' && (
+              <>
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    size="small"
+                    type="date"
+                    label="Scheduled From"
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                    value={filters.scheduledDate.from}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, scheduledDate: { ...f.scheduledDate, from: e.target.value } }))
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    size="small"
+                    type="date"
+                    label="Scheduled To"
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                    value={filters.scheduledDate.to}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, scheduledDate: { ...f.scheduledDate, to: e.target.value } }))
                     }
                   />
                 </Grid>
@@ -645,7 +729,8 @@ export default function TaskListPage() {
           <TableHead>
             <TableRow>
               <TableCell>SL No</TableCell>
-              <TableCell>Date</TableCell>
+              <TableCell>Scheduled Date</TableCell>
+              <TableCell>Created Date</TableCell>
               
               <TableCell>Supplier Link</TableCell>
               
@@ -679,6 +764,7 @@ export default function TaskListPage() {
                 <>
                   <TableRow key={it._id || idx} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'action.hover' } }}>
                     <TableCell>{(page - 1) * limit + idx + 1}</TableCell>
+                    <TableCell>{toISTYMD(it.scheduledDate)}</TableCell>
                     <TableCell>{toISTYMD(it.createdAt)}</TableCell>
                     
                     <TableCell sx={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -725,7 +811,7 @@ export default function TaskListPage() {
                   </TableRow>
                   {rangeQuantities.length > 0 && (
                     <TableRow>
-                      <TableCell colSpan={17} sx={{ py: 0, borderBottom: 0 }}>
+                      <TableCell colSpan={18} sx={{ py: 0, borderBottom: 0 }}>
                         <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                           <Box sx={{ margin: 2 }}>
                             <Typography variant="subtitle2" sx={{ mb: 1 }}>Range Quantity Breakdown:</Typography>

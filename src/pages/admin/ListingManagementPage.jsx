@@ -20,7 +20,8 @@ export default function ListingManagementPage() {
     quantity: '',
     listingPlatformId: '',
     storeId: '',
-    notes: ''
+    notes: '',
+    scheduledDate: new Date().toISOString().split('T')[0] // Default to today
   });
 
   // Load all tasks (no filter, because we want them always visible)
@@ -49,12 +50,19 @@ export default function ListingManagementPage() {
 
   const openAssign = (row) => {
     setAssigning(row);
-    setAssignForm({ listerId: '', quantity: '', listingPlatformId: '', storeId: '', notes: '' });
+    setAssignForm({ 
+      listerId: '', 
+      quantity: '', 
+      listingPlatformId: '', 
+      storeId: '', 
+      notes: '',
+      scheduledDate: new Date().toISOString().split('T')[0] // Reset to today
+    });
     setAssignOpen(true);
   };
 
   const handleAssign = async () => {
-    const { listerId, quantity, listingPlatformId, storeId, notes } = assignForm;
+    const { listerId, quantity, listingPlatformId, storeId, notes, scheduledDate } = assignForm;
     if (!listerId || !quantity || !listingPlatformId || !storeId) {
       alert('All fields are required');
       return;
@@ -66,12 +74,13 @@ export default function ListingManagementPage() {
       quantity: Number(quantity),
       listingPlatformId,
       storeId,
-      notes
+      notes,
+      scheduledDate
     });
 
     setAssignOpen(false);
     setAssigning(null);
-    alert('Task shared successfully!');
+    alert('Task scheduled successfully!');
   };
 
   return (
@@ -139,6 +148,19 @@ export default function ListingManagementPage() {
               type="number"
               value={assignForm.quantity}
               onChange={(e) => setAssignForm({ ...assignForm, quantity: Number(e.target.value) })}
+              required
+            />
+
+            <TextField
+              label="Scheduled Date"
+              type="date"
+              value={assignForm.scheduledDate}
+              onChange={(e) => setAssignForm({ ...assignForm, scheduledDate: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ 
+                min: new Date().toISOString().split('T')[0] // Prevent selecting past dates
+              }}
+              helperText="Task will appear to lister on this date"
               required
             />
 

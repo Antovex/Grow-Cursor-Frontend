@@ -474,7 +474,8 @@ export default function StoreTaskDetailPage() {
           <TableHead>
             <TableRow>
               <TableCell>SL No</TableCell>
-              <TableCell>Date</TableCell>
+              <TableCell>Scheduled Date</TableCell>
+              <TableCell>Created Date</TableCell>
               <TableCell>Supplier Link</TableCell>
               <TableCell>Source Platform</TableCell>
               <TableCell>Category</TableCell>
@@ -492,13 +493,13 @@ export default function StoreTaskDetailPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={13} align="center">
+                <TableCell colSpan={14} align="center">
                   <CircularProgress size={24} />
                 </TableCell>
               </TableRow>
             ) : filteredItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} align="center">
+                <TableCell colSpan={14} align="center">
                   <Typography variant="body2" color="text.secondary">
                     No assignments found matching the filters.
                   </Typography>
@@ -518,6 +519,7 @@ export default function StoreTaskDetailPage() {
                   <>
                     <TableRow key={it._id || idx} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'action.hover' } }}>
                       <TableCell>{(page - 1) * limit + idx + 1}</TableCell>
+                      <TableCell>{toISTYMD(it.scheduledDate)}</TableCell>
                       <TableCell>{toISTYMD(it.createdAt)}</TableCell>
                       <TableCell sx={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {t.supplierLink ? (
@@ -557,7 +559,7 @@ export default function StoreTaskDetailPage() {
                     </TableRow>
                     {rangeQuantities.length > 0 && (
                       <TableRow>
-                        <TableCell colSpan={13} sx={{ py: 0, borderBottom: 0 }}>
+                        <TableCell colSpan={14} sx={{ py: 0, borderBottom: 0 }}>
                           <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                             <Box sx={{ margin: 2 }}>
                               <Typography variant="subtitle2" sx={{ mb: 1 }}>Range Quantity Breakdown:</Typography>

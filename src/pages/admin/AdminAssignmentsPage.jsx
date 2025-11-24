@@ -123,12 +123,12 @@ export default function AdminAssignmentsPage() {
 
       <Divider sx={{ my: 3 }} />
 
-      <Typography variant="subtitle1" sx={{ mb: 1 }}>Admin → Lister Detail</Typography>
+      <Typography variant="subtitle1" sx={{ mb: 1 }}>Admin → Lister Detail (by Scheduled Date)</Typography>
       <TableContainer component={Paper}>
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Date</TableCell>
+              <TableCell>Scheduled Date</TableCell>
               <TableCell>Listing Admin</TableCell>
               <TableCell>Lister</TableCell>
               <TableCell>Tasks</TableCell>

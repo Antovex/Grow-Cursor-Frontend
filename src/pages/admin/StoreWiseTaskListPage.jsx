@@ -90,12 +90,12 @@ export default function StoreWiseTaskListPage() {
           <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>
             Store-Wise Task List
           </Typography>
-          <Tooltip title="This shows TOTAL assigned quantities. Listing Summary shows completed quantities only.">
+          <Tooltip title="Tasks are grouped by their scheduled date. All tasks shown regardless of scheduled date.">
             <InfoOutlinedIcon color="action" fontSize="small" sx={{ cursor: 'help' }} />
           </Tooltip>
         </Stack>
         <Typography variant="body2" color="text.secondary">
-          View assignments grouped by store and date. Click on a card to see detailed assignments.
+          View all assignments grouped by store and scheduled date. Click on a card to see detailed assignments.
         </Typography>
       </Paper>
 
@@ -111,11 +111,14 @@ export default function StoreWiseTaskListPage() {
             <Box key={date} sx={{ mb: 4 }}>
               {/* Date Header */}
               <Paper sx={{ p: 1.5, mb: 2, backgroundColor: 'primary.main', color: 'white' }}>
-                <Typography variant="h6">
-                  {formatDate(date)}
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <CalendarTodayIcon fontSize="small" />
+                  <Typography variant="h6">
+                    Scheduled: {formatDate(date)}
+                  </Typography>
+                </Stack>
                 <Typography variant="caption">
-                  {dateCards.length} store{dateCards.length !== 1 ? 's' : ''}
+                  {dateCards.length} store{dateCards.length !== 1 ? 's' : ''} with tasks
                 </Typography>
               </Paper>
               
