@@ -481,7 +481,7 @@ export default function FulfillmentDashboard() {
               </MenuItem>
               <MenuItem value="EBAY_US">EBAY_US</MenuItem>
               <MenuItem value="EBAY_AU">EBAY_AU</MenuItem>
-              <MenuItem value="EBAY_ENCA">EBAY_Canada</MenuItem>
+              <MenuItem value="EBAY_ENCA">EBAY_CA</MenuItem>
             </Select>
           </FormControl>
         </Stack>
