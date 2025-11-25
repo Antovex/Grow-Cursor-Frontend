@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,useRef } from 'react';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
 import {
@@ -28,12 +28,215 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
+import { Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import SendIcon from '@mui/icons-material/Send';
+import CloseIcon from '@mui/icons-material/Close';
+
+
+import ChatIcon from '@mui/icons-material/Chat';
+
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import api from '../../lib/api';
+
+
+// --- NEW COMPONENT: Chat Dialog (Replicates BuyerChatPage) ---
+function ChatDialog({ open, onClose, order }) {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef(null);
+  const pollingInterval = useRef(null);
+
+  // Load messages when dialog opens
+  useEffect(() => {
+    if (open && order) {
+      loadMessages();
+      startPolling();
+    } else {
+      stopPolling();
+      setMessages([]);
+      setNewMessage('');
+    }
+    return () => stopPolling();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, order]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const stopPolling = () => {
+    if (pollingInterval.current) clearInterval(pollingInterval.current);
+  };
+
+  const startPolling = () => {
+    stopPolling();
+    pollingInterval.current = setInterval(() => {
+      // Poll for new messages silently
+      if (order) {
+        const itemId = order.itemNumber || order.lineItems?.[0]?.legacyItemId;
+        api.post('/ebay/sync-thread', {
+          sellerId: order.seller?._id || order.seller,
+          buyerUsername: order.buyer?.username,
+          itemId: itemId
+        }).then(res => {
+          if (res.data.newMessagesFound) {
+            loadMessages(false); // Reload without loading spinner
+          }
+        }).catch(err => console.error("Polling error", err));
+      }
+    }, 4000); // Poll every 4 seconds
+  };
+
+  async function loadMessages(showLoading = true) {
+    if (showLoading) setLoading(true);
+    try {
+      const { data } = await api.get('/ebay/chat/messages', {
+        params: { orderId: order.orderId }
+      });
+      setMessages(data || []);
+    } catch (e) {
+      console.error("Failed to load messages", e);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }
+
+  async function handleSendMessage() {
+    if (!newMessage.trim()) return;
+    setSending(true);
+    try {
+      const itemId = order.itemNumber || order.lineItems?.[0]?.legacyItemId;
+      const { data } = await api.post('/ebay/send-message', {
+        orderId: order.orderId,
+        buyerUsername: order.buyer?.username,
+        itemId: itemId,
+        body: newMessage,
+        subject: `Regarding Order #${order.orderId}`
+      });
+
+      setMessages([...messages, data.message]);
+      setNewMessage('');
+    } catch (e) {
+      alert('Failed to send: ' + (e.response?.data?.error || e.message));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      {/* Header */}
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
+        <Box>
+          <Typography variant="subtitle1" fontWeight="bold">
+            {order?.buyer?.buyerRegistrationAddress?.fullName || order?.buyer?.username || 'Buyer Chat'}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Order #{order?.orderId}
+          </Typography>
+        </Box>
+        <IconButton onClick={onClose}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      {/* Chat Area */}
+      <DialogContent sx={{ p: 0, bgcolor: '#f0f2f5', height: '500px', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flex: 1, p: 2, overflowY: 'auto' }}>
+          {loading ? (
+            <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>
+          ) : (
+            <Stack spacing={2}>
+              {messages.length === 0 && (
+                <Alert severity="info" sx={{ mx: 'auto', width: 'fit-content' }}>
+                  No messages yet. Start the conversation below!
+                </Alert>
+              )}
+              
+              {messages.map((msg) => (
+                <Box 
+                  key={msg._id} 
+                  sx={{ 
+                    alignSelf: msg.sender === 'SELLER' ? 'flex-end' : 'flex-start',
+                    maxWidth: '75%'
+                  }}
+                >
+                  <Paper 
+                    elevation={1}
+                    sx={{ 
+                      p: 1.5, 
+                      bgcolor: msg.sender === 'SELLER' ? '#1976d2' : '#ffffff',
+                      color: msg.sender === 'SELLER' ? '#fff' : 'text.primary',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{msg.body}</Typography>
+                     {/* Images */}
+                     {msg.mediaUrls && msg.mediaUrls.length > 0 && (
+                        <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          {msg.mediaUrls.map((url, idx) => (
+                            <Box 
+                                key={idx}
+                                component="img"
+                                src={url}
+                                alt="Attachment"
+                                sx={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 1, cursor: 'pointer', border: '1px solid #ccc' }}
+                                onClick={() => window.open(url, '_blank')}
+                            />
+                          ))}
+                        </Box>
+                      )}
+                  </Paper>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, textAlign: msg.sender === 'SELLER' ? 'right' : 'left', fontSize: '0.7rem' }}>
+                    {new Date(msg.messageDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    {msg.sender === 'SELLER' && (msg.read ? ' • Read' : ' • Sent')}
+                  </Typography>
+                </Box>
+              ))}
+              <div ref={messagesEndRef} />
+            </Stack>
+          )}
+        </Box>
+
+        {/* Input Area */}
+        <Box sx={{ p: 2, bgcolor: '#fff', borderTop: 1, borderColor: 'divider', display: 'flex', gap: 1 }}>
+          <TextField
+            fullWidth
+            multiline
+            maxRows={3}
+            placeholder="Type a message..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={(e) => {
+                if(e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                }
+            }}
+            disabled={sending}
+            size="small"
+          />
+          <Button 
+            variant="contained" 
+            sx={{ px: 3 }}
+            endIcon={sending ? <CircularProgress size={20} color="inherit"/> : <SendIcon />}
+            onClick={handleSendMessage}
+            disabled={sending || !newMessage.trim()}
+          >
+            Send
+          </Button>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function FulfillmentDashboard() {
   const [sellers, setSellers] = useState([]);
@@ -74,6 +277,19 @@ export default function FulfillmentDashboard() {
   const [snackbarSeverity, setSnackbarSeverity] = useState('info');
   const [snackbarOrderIds, setSnackbarOrderIds] = useState([]); // Store order IDs for copying
   const [updatedOrderDetails, setUpdatedOrderDetails] = useState([]); // Store { orderId, changedFields }
+
+
+
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [selectedOrderForMessage, setSelectedOrderForMessage] = useState(null);
+  const [messageBody, setMessageBody] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+
+
+
+
+
+
 
   useEffect(() => {
     fetchSellers();
@@ -192,6 +408,185 @@ export default function FulfillmentDashboard() {
       setLoading(false);
     }
   }
+
+
+
+  const handleOpenMessageDialog = (order) => {
+    setSelectedOrderForMessage(order);
+    setMessageBody('');
+    setMessageModalOpen(true);
+  };
+
+  const handleCloseMessageDialog = () => {
+    setMessageModalOpen(false);
+    setSelectedOrderForMessage(null);
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageBody.trim() || !selectedOrderForMessage) return;
+
+    setSendingMessage(true);
+    try {
+      // Use the same endpoint as the BuyerChatPage
+      await api.post('/ebay/send-message', {
+        orderId: selectedOrderForMessage.orderId,
+        buyerUsername: selectedOrderForMessage.buyer?.username,
+        // Fallback for item ID if lineItems is missing
+        itemId: selectedOrderForMessage.itemNumber || selectedOrderForMessage.lineItems?.[0]?.legacyItemId,
+        body: messageBody,
+        subject: `Regarding Order #${selectedOrderForMessage.orderId}`
+      });
+
+      setSnackbarMsg('Message sent successfully!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      
+      // Auto update status to "Ongoing Conversation"
+      updateMessagingStatus(selectedOrderForMessage._id, 'Ongoing Conversation');
+      
+      handleCloseMessageDialog();
+    } catch (e) {
+      setSnackbarMsg('Failed to send message: ' + (e.response?.data?.error || e.message));
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+
+
+
+const updateFulfillmentNotes = async (orderId, value) => {
+  try {
+    // POINT TO NEW ENDPOINT
+    await api.patch(`/ebay/orders/${orderId}/fulfillment-notes`, { fulfillmentNotes: value });
+    
+    // UPDATE LOCAL STATE with new field name
+    setOrders(prev => prev.map(o => o._id === orderId ? { ...o, fulfillmentNotes: value } : o));
+    
+    setSnackbarMsg('Fulfillment notes updated');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  } catch (err) {
+    console.error('Failed to update notes:', err);
+    setSnackbarMsg('Failed to update notes');
+    setSnackbarSeverity('error');
+    setSnackbarOpen(true);
+  }
+};
+
+
+
+
+
+  
+  //  HELPER for the NotesCell
+  const handleSaveNote = async (orderId, noteValue) => {
+    await api.patch(`/ebay/orders/${orderId}/fulfillment-notes`, { fulfillmentNotes: noteValue });
+    // Update local state
+    setOrders(prev => prev.map(o => o._id === orderId ? { ...o, fulfillmentNotes: noteValue } : o));
+  };
+
+  //  HELPER for Notifications
+  const showNotification = (severity, message) => {
+    setSnackbarMsg(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
+
+
+function NotesCell({ order, onSave, onNotify }) {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [tempValue, setTempValue] = React.useState(order.fulfillmentNotes || '');
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  // Sync state if order data changes from outside (e.g. polling)
+  React.useEffect(() => {
+    if (!isEditing) {
+        setTempValue(order.fulfillmentNotes || '');
+    }
+  }, [order.fulfillmentNotes, isEditing]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(order._id, tempValue);
+      setIsEditing(false);
+      onNotify('success', 'Note saved successfully');
+    } catch (e) {
+      onNotify('error', 'Failed to save note');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setTempValue(order.fulfillmentNotes || '');
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 200 }}>
+        <TextField
+          fullWidth
+          multiline
+          minRows={2}
+          size="small"
+          value={tempValue}
+          onChange={(e) => setTempValue(e.target.value)}
+          placeholder="Enter note..."
+          autoFocus
+        />
+        <Stack direction="row" spacing={1}>
+            <Button 
+                variant="contained" 
+                size="small" 
+                onClick={handleSave} 
+                disabled={isSaving}
+                sx={{ fontSize: '0.7rem', py: 0.5 }}
+            >
+                {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button 
+                variant="outlined" 
+                size="small" 
+                onClick={handleCancel}
+                disabled={isSaving}
+                sx={{ fontSize: '0.7rem', py: 0.5 }}
+            >
+                Cancel
+            </Button>
+        </Stack>
+      </Box>
+    );
+  }
+
+  return (
+    <Box 
+        onClick={() => setIsEditing(true)} 
+        sx={{ 
+            cursor: 'pointer', 
+            minHeight: 30, 
+            minWidth: 150,
+            display: 'flex', 
+            alignItems: 'center',
+            '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 1 }
+        }}
+    >
+      {order.fulfillmentNotes ? (
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
+            {order.fulfillmentNotes}
+        </Typography>
+      ) : (
+        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+            + Add Note
+        </Typography>
+      )}
+    </Box>
+  );
+}
 
   // Poll for NEW orders only
   async function pollNewOrders() {
@@ -645,7 +1040,11 @@ export default function FulfillmentDashboard() {
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Refunds</TableCell>
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Tracking Number</TableCell>
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Messaging Status</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Item Status</TableCell>
+                
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Notes</TableCell>
+           
+                <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign: 'center' }}>Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -787,10 +1186,10 @@ export default function FulfillmentDashboard() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Tooltip title={order.shippingPhone || '0000000000'} arrow>
                               <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                                📞 {order.shippingPhone || '0000000000'}
+                                📞 {'0000000000'}
                               </Typography>
                             </Tooltip>
-                            <IconButton size="small" onClick={() => handleCopy(order.shippingPhone || '0000000000')} aria-label="copy phone">
+                            <IconButton size="small" onClick={() => handleCopy('0000000000')} aria-label="copy phone">
                               <ContentCopyIcon fontSize="small" />
                             </IconButton>
                           </Box>
@@ -930,36 +1329,7 @@ export default function FulfillmentDashboard() {
                     </TableCell>
 
                     {/* Item Status Column */}
-                    <TableCell sx={{ minWidth: 150 }}>
-                      {order.itemStatus === 'Resolved' ? (
-                        <Box>
-                          <Chip 
-                            label={`Resolved - ${order.resolvedFrom || 'Unknown'}`}
-                            color="success" 
-                            size="small"
-                            sx={{ fontWeight: 'bold', mb: 0.5 }}
-                          />
-                          {order.notes && (
-                            <Tooltip title={order.notes} arrow placement="top">
-                              <Typography 
-                                variant="caption" 
-                                sx={{ 
-                                  display: 'block',
-                                  color: 'text.secondary',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  maxWidth: 200,
-                                  cursor: 'pointer',
-                                  '&:hover': { color: 'primary.main' }
-                                }}
-                              >
-                                📝 {order.notes}
-                              </Typography>
-                            </Tooltip>
-                          )}
-                        </Box>
-                      ) : (
+                    <TableCell sx={{ minWidth: 160 }}>
                         <FormControl size="small" fullWidth>
                           <Select
                             value={order.itemStatus || 'None'}
@@ -967,13 +1337,32 @@ export default function FulfillmentDashboard() {
                             sx={{ fontSize: '0.875rem' }}
                           >
                             <MenuItem value="None" sx={{ color: 'text.secondary' }}>None</MenuItem>
-                            <MenuItem value="Return" sx={{ color: 'error.main', fontWeight: 'medium' }}>Return</MenuItem>
-                            <MenuItem value="Replace" sx={{ color: 'warning.main', fontWeight: 'medium' }}>Replace</MenuItem>
-                            <MenuItem value="INR" sx={{ color: 'error.dark', fontWeight: 'medium' }}>INR</MenuItem>
+                            <MenuItem value="Out of Stock" sx={{ color: 'error.main', fontWeight: 'bold' }}>Out of Stock</MenuItem>
+                            <MenuItem value="Delayed Delivery" sx={{ color: 'warning.main', fontWeight: 'bold' }}>Delayed Delivery</MenuItem>
+                            <MenuItem value="Label Created" sx={{ color: 'info.main', fontWeight: 'bold' }}>Label Created</MenuItem>
+                            <MenuItem value="Other">Other</MenuItem>
                           </Select>
                         </FormControl>
-                      )}
                     </TableCell>
+
+                    <TableCell>
+                        <NotesCell 
+                            order={order} 
+                            onSave={handleSaveNote} 
+                            onNotify={showNotification}
+                        />
+                    </TableCell>
+                      <TableCell align="center">
+                      <Tooltip title="Message Buyer">
+                        <IconButton 
+                          color="primary" 
+                          onClick={() => handleOpenMessageDialog(order)}
+                        >
+                          <ChatIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+
                   </TableRow>
                 );
               })}
@@ -997,8 +1386,19 @@ export default function FulfillmentDashboard() {
             showLastButton
             size="large"
           />
+
+
+        
+
         </Box>
       )}
+
+
+      <ChatDialog 
+        open={messageModalOpen} 
+        onClose={handleCloseMessageDialog} 
+        order={selectedOrderForMessage} 
+      />
 
       {/* Snackbar for polling results */}
       <Snackbar

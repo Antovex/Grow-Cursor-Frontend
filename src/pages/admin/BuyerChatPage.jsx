@@ -180,11 +180,27 @@ export default function BuyerChatPage() {
   }
 
   async function handleSearchOrder() {
-    if (!searchQuery.trim()) return;
+    const trimmedQuery = searchQuery.trim(); // Get cleaned query
+    if (!trimmedQuery) return;
     setSearchError('');
+
+    // --- NEW CODE: Check existing threads first ---
+    // Try to find a thread that matches the entered Order ID
+    const existingThread = threads.find(
+      (thread) => thread.orderId && thread.orderId.toString() === trimmedQuery
+    );
+
+    if (existingThread) {
+      // If found locally, just select it and stop here.
+      handleThreadSelect(existingThread);
+      setSearchQuery(''); // Optional: clear search box
+      return;
+    }
+    // ----------------------------------------------
+
     try {
       const res = await api.get('/ebay/chat/search-order', {
-        params: { orderId: searchQuery.trim() }
+        params: { orderId: trimmedQuery } // Use the variable
       });
       handleThreadSelect(res.data); 
     } catch (e) {
