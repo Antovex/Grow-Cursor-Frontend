@@ -37,6 +37,26 @@ const getVehicleString = (nameValueList) => {
   return `${year} ${make} ${model}`.trim();
 };
 
+
+// Helper to format date to IST
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  
+  // Create Date object from UTC string
+  const date = new Date(dateString);
+  
+  // Format to IST using Intl.DateTimeFormat
+  return new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata', // Force IST
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).format(date);
+};
+
 const YEAR_OPTIONS = Array.from({ length: 47 }, (_, i) => (2026 - i).toString());
 
 export default function CompatibilityDashboard() {
@@ -207,6 +227,7 @@ export default function CompatibilityDashboard() {
                 <TableCell width="80">Image</TableCell>
                 <TableCell width="25%">Title & SKU</TableCell>
                 <TableCell>Price</TableCell>
+                <TableCell>Listed On</TableCell>
                 <TableCell width="40%">Fitment Summary</TableCell>
                 <TableCell>Action</TableCell>
                 </TableRow>
@@ -223,6 +244,9 @@ export default function CompatibilityDashboard() {
                                 <Typography variant="caption" display="block" color="textSecondary" mt={0.5}>ID: {item.itemId}</Typography>
                             </TableCell>
                             <TableCell>{item.currency} {item.currentPrice}</TableCell>
+                            <TableCell>
+                    <Typography variant="body2">{formatDate(item.startTime)}</Typography>
+                </TableCell>
                             <TableCell>
                                 {fitmentSummary.length > 0 ? (
                                     <Box sx={{ maxHeight: 100, overflowY: 'auto', border: '1px solid #eee', borderRadius: 1, p: 1, bgcolor: '#fafafa' }}>
