@@ -12,7 +12,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import api from '../../lib/api';
 
-// Helper to group raw rows into readable text (e.g. "Ford F-150: 2015, 2016")
+// Helper: Group raw rows into readable text
 const groupFitmentData = (compatibilityList) => {
   if (!compatibilityList || compatibilityList.length === 0) return [];
   const groups = {};
@@ -30,30 +30,23 @@ const groupFitmentData = (compatibilityList) => {
   });
 
   return Object.entries(groups).map(([key, yearSet]) => {
-    // Sort years descending
     const sortedYears = Array.from(yearSet).sort((a, b) => b - a);
     return { title: key, years: sortedYears.join(', ') };
   });
 };
 
-// Helper to format vehicle string including Trim/Engine for the Modal List
+// Helper: Format vehicle string for Modal List
 const getVehicleString = (nameValueList) => {
     const year = nameValueList.find(x => x.name === 'Year')?.value || '';
     const make = nameValueList.find(x => x.name === 'Make')?.value || '';
     const model = nameValueList.find(x => x.name === 'Model')?.value || '';
-    
-    // Find extra fields (Trim, Engine, Notes)
-    const extras = nameValueList
-        .filter(x => !['Year', 'Make', 'Model'].includes(x.name))
-        .map(x => `${x.name}: ${x.value}`)
-        .join(' | ');
-
+    const extras = nameValueList.filter(x => !['Year', 'Make', 'Model'].includes(x.name)).map(x => `${x.name}: ${x.value}`).join(' | ');
     let mainString = `${year} ${make} ${model}`;
     if (extras) mainString += ` (${extras})`;
     return mainString.trim();
 };
 
-// Helper to format date to IST
+// Helper: Date to IST
 const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Intl.DateTimeFormat('en-IN', {
@@ -63,21 +56,17 @@ const formatDate = (dateString) => {
     }).format(new Date(dateString));
 };
 
-const YEAR_OPTIONS = Array.from({ length: 47 }, (_, i) => (2028 - i).toString());
-
 export default function CompatibilityDashboard() {
   const [sellers, setSellers] = useState([]);
   const [currentSellerId, setCurrentSellerId] = useState('');
-  
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  // Modal State
   const [openModal, setOpenModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editCompatList, setEditCompatList] = useState([]);
@@ -85,18 +74,18 @@ export default function CompatibilityDashboard() {
   // Dropdown Data
   const [makeOptions, setMakeOptions] = useState([]);
   const [modelOptions, setModelOptions] = useState([]);
+  const [yearOptions, setYearOptions] = useState([]); // Dynamic Years
+  
   const [loadingMakes, setLoadingMakes] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [loadingYears, setLoadingYears] = useState(false);
 
-  // Form Selection State
+  // Selection
   const [selectedMake, setSelectedMake] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedYears, setSelectedYears] = useState([]);
   const [newNotes, setNewNotes] = useState('');
 
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-
-  // 1. Init Dashboard
   useEffect(() => {
     const initDashboard = async () => {
       try {
@@ -114,7 +103,6 @@ export default function CompatibilityDashboard() {
     initDashboard();
   }, []);
 
-  // 2. Load Listings
   useEffect(() => {
     if (currentSellerId) loadListings();
   }, [currentSellerId, page]);
@@ -122,7 +110,8 @@ export default function CompatibilityDashboard() {
   const loadListings = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/ebay/listings', { params: { sellerId: currentSellerId, page, limit: 100 } }); 
+      // Limit 50 to match your request
+      const { data } = await api.get('/ebay/listings', { params: { sellerId: currentSellerId, page, limit: 50 } }); 
       setListings(data.listings);
       setTotalPages(data.pagination.pages);
       setTotalItems(data.pagination.total);
@@ -142,7 +131,7 @@ export default function CompatibilityDashboard() {
     finally { setSyncing(false); }
   };
 
-  // --- DATA FETCHING FOR DROPDOWNS ---
+  // --- API FETCHING ---
 
   const fetchMakes = async () => {
     if (makeOptions.length > 0) return;
@@ -158,6 +147,8 @@ export default function CompatibilityDashboard() {
     setLoadingModels(true);
     setModelOptions([]); 
     setSelectedModel(null);
+    setYearOptions([]);
+    setSelectedYears([]);
     try {
         const { data } = await api.post('/ebay/compatibility/values', { 
             sellerId: currentSellerId, 
@@ -169,26 +160,40 @@ export default function CompatibilityDashboard() {
     finally { setLoadingModels(false); }
   };
 
+  // FIX: Dynamic Year Fetching to prevent "Invalid Vehicle" errors
+  const fetchYears = async (makeVal, modelVal) => {
+    setLoadingYears(true);
+    setYearOptions([]);
+    setSelectedYears([]);
+    try {
+        const { data } = await api.post('/ebay/compatibility/values', { 
+            sellerId: currentSellerId, 
+            propertyName: 'Year',
+            constraints: [
+                { name: 'Make', value: makeVal },
+                { name: 'Model', value: modelVal }
+            ]
+        });
+        // Sort descending (2025, 2024...)
+        setYearOptions(data.values.sort((a, b) => b - a));
+    } catch (e) { console.error(e); } 
+    finally { setLoadingYears(false); }
+  };
+
   // --- HANDLERS ---
 
   const handleEditClick = (item) => {
     setSelectedItem(item);
-    // Create deep copy of compatibility list
     setEditCompatList(JSON.parse(JSON.stringify(item.compatibility || [])));
     setOpenModal(true);
-    
-    // Reset Form
     setSelectedMake(null);
     setSelectedModel(null);
     setSelectedYears([]);
-    
-    // Load Makes immediately
     fetchMakes();
   };
 
   const handleAddVehicle = () => {
     if(!selectedMake || !selectedModel || selectedYears.length === 0) return;
-
     const newEntries = selectedYears.map(year => ({
       notes: newNotes,
       nameValueList: [
@@ -197,11 +202,7 @@ export default function CompatibilityDashboard() {
         { name: 'Model', value: selectedModel }
       ]
     }));
-    
-    // Add to top of list
     setEditCompatList([...newEntries, ...editCompatList]);
-    
-    // Clear years and notes, keep Make/Model for faster entry
     setSelectedYears([]); 
     setNewNotes('');
   };
@@ -212,10 +213,10 @@ export default function CompatibilityDashboard() {
     setEditCompatList(updated);
   };
 
+  // FIX: Scroll Jump fixed by updating LOCAL state
   const handleSaveCompatibility = async () => {
     if (!selectedItem || !currentSellerId) return;
     try {
-      // FIX: Must destructure '{ data }' here so the variable 'data' exists below
       const { data } = await api.post('/ebay/update-compatibility', {
         sellerId: currentSellerId,
         itemId: selectedItem.itemId,
@@ -224,16 +225,23 @@ export default function CompatibilityDashboard() {
 
       setOpenModal(false);
 
-      // Now 'data' is defined, so this works
       if (data.warning) {
           showSnackbar(`Saved with eBay Warning: ${data.warning}`, 'warning');
       } else {
           showSnackbar('Changes saved to eBay successfully!', 'success');
       }
 
-      loadListings(); 
+      // DO NOT call loadListings() -> This prevents the scroll reset
+      // Update local listings state manually
+      setListings(prevListings => 
+        prevListings.map(item => 
+          item.itemId === selectedItem.itemId 
+            ? { ...item, compatibility: editCompatList } 
+            : item
+        )
+      );
+
     } catch (e) {
-      // If the API fails, 'e.response.data' contains the backend error
       const errorMsg = e.response?.data?.error || e.message;
       showSnackbar(`Update failed: ${errorMsg}`, 'error');
     }
@@ -284,25 +292,16 @@ export default function CompatibilityDashboard() {
                     const fitmentSummary = groupFitmentData(item.compatibility);
                     return (
                     <TableRow key={item.itemId}>
-                        {/* IMAGE */}
                         <TableCell>{item.mainImageUrl && <img src={item.mainImageUrl} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }} />}</TableCell>
-                        
-                        {/* TITLE & SKU */}
                         <TableCell>
                             <Typography variant="subtitle2" sx={{lineHeight: 1.2, mb: 0.5}}>{item.title}</Typography>
                             <Chip label={item.sku || 'No SKU'} size="small" variant="outlined" sx={{fontSize: '0.7rem'}}/>
                             <Typography variant="caption" display="block" color="textSecondary" mt={0.5}>ID: {item.itemId}</Typography>
                         </TableCell>
-                        
-                        {/* PRICE */}
                         <TableCell>{item.currency} {item.currentPrice}</TableCell>
+                        <TableCell><Typography variant="body2" sx={{whiteSpace:'nowrap'}}>{formatDate(item.startTime)}</Typography></TableCell>
                         
-                        {/* DATE LISTED */}
-                        <TableCell>
-                            <Typography variant="body2" sx={{whiteSpace:'nowrap'}}>{formatDate(item.startTime)}</Typography>
-                        </TableCell>
-                        
-                        {/* FITMENT SUMMARY BOX */}
+                        {/* FITMENT SUMMARY */}
                         <TableCell>
                             {fitmentSummary.length > 0 ? (
                                 <Box sx={{ maxHeight: 120, overflowY: 'auto', border: '1px solid #eee', borderRadius: 1, p: 1, bgcolor: '#fafafa' }}>
@@ -317,7 +316,6 @@ export default function CompatibilityDashboard() {
                             )}
                         </TableCell>
 
-                        {/* ACTION */}
                         <TableCell>
                             <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={() => handleEditClick(item)}>Edit</Button>
                         </TableCell>
@@ -333,12 +331,11 @@ export default function CompatibilityDashboard() {
         </>
       )}
 
-      {/* EDIT MODAL (UNCHANGED from previous working version) */}
+      {/* MODAL */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="xl" fullWidth>
         <DialogTitle sx={{ borderBottom: '1px solid #eee' }}>Edit Compatibility: {selectedItem?.itemId}</DialogTitle>
         <DialogContent sx={{ p: 0, display: 'flex', height: '75vh' }}>
           
-          {/* LEFT: Description */}
           <Box sx={{ flex: 1, borderRight: '1px solid #eee', p: 2, overflowY: 'auto', bgcolor: '#fafafa' }}>
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Item Description Preview</Typography>
             {selectedItem?.descriptionPreview ? (
@@ -346,7 +343,6 @@ export default function CompatibilityDashboard() {
             ) : <Typography variant="body2" color="textSecondary">No preview available.</Typography>}
           </Box>
 
-          {/* RIGHT: Form & List */}
           <Box sx={{ flex: 1, p: 2, display: 'flex', flexDirection: 'column' }}>
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                 Compatible Vehicles ({editCompatList.length})
@@ -368,7 +364,7 @@ export default function CompatibilityDashboard() {
                 <Autocomplete
                     options={modelOptions}
                     value={selectedModel}
-                    onChange={(e, val) => setSelectedModel(val)}
+                    onChange={(e, val) => { setSelectedModel(val); if(val) fetchYears(selectedMake, val); }}
                     loading={loadingModels}
                     disabled={!selectedMake}
                     renderInput={(params) => <TextField {...params} label="Model" size="small" />}
@@ -386,7 +382,8 @@ export default function CompatibilityDashboard() {
                         renderValue={(selected) => selected.join(', ')}
                         MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
                     >
-                        {YEAR_OPTIONS.map((year) => (
+                        {loadingYears ? <MenuItem disabled>Loading...</MenuItem> : 
+                         yearOptions.map((year) => (
                             <MenuItem key={year} value={year}>
                                 <Checkbox checked={selectedYears.indexOf(year) > -1} size="small" />
                                 <ListItemText primary={year} />
@@ -412,7 +409,6 @@ export default function CompatibilityDashboard() {
                       <TableCell><IconButton size="small" color="error" onClick={() => handleRemoveVehicle(idx)}><DeleteIcon fontSize="small" /></IconButton></TableCell>
                     </TableRow>
                   ))}
-                  {editCompatList.length === 0 && <TableRow><TableCell colSpan={3} align="center">No vehicles added yet.</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </Box>
