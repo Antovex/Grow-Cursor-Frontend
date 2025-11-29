@@ -24,7 +24,7 @@ import {
   TextField,
   Tooltip,
   IconButton,
-  Pagination,
+  Pagination,Link,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
@@ -40,10 +40,15 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+
+import PersonIcon from '@mui/icons-material/Person'; // <--- Add this
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'; // <--- Add this
+
+
 import api from '../../lib/api';
 
 
-// --- NEW COMPONENT: Chat Dialog (Replicates BuyerChatPage) ---
+// --- NEW COMPONENT: Chat Dialog (Visual Match with BuyerChatPage) ---
 function ChatDialog({ open, onClose, order }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -78,7 +83,6 @@ function ChatDialog({ open, onClose, order }) {
   const startPolling = () => {
     stopPolling();
     pollingInterval.current = setInterval(() => {
-      // Poll for new messages silently
       if (order) {
         const itemId = order.itemNumber || order.lineItems?.[0]?.legacyItemId;
         api.post('/ebay/sync-thread', {
@@ -87,11 +91,11 @@ function ChatDialog({ open, onClose, order }) {
           itemId: itemId
         }).then(res => {
           if (res.data.newMessagesFound) {
-            loadMessages(false); // Reload without loading spinner
+            loadMessages(false);
           }
         }).catch(err => console.error("Polling error", err));
       }
-    }, 4000); // Poll every 4 seconds
+    }, 10000);
   };
 
   async function loadMessages(showLoading = true) {
@@ -130,24 +134,113 @@ function ChatDialog({ open, onClose, order }) {
     }
   }
 
+  // Helper to safely extract data from the Order object
+  const sellerName = order?.seller?.user?.username || 'Seller';
+  const buyerName = order?.buyer?.buyerRegistrationAddress?.fullName || '-';
+  const buyerUsername = order?.buyer?.username || '-';
+  const itemId = order?.itemNumber || order?.lineItems?.[0]?.legacyItemId || '';
+  let itemTitle = order?.productName || order?.lineItems?.[0]?.title || '';
+  const itemCount = order?.lineItems?.length || 0;
+  if (itemCount > 1) {
+     itemTitle = `${itemTitle} (+ ${itemCount - 1} other${itemCount - 1 > 1 ? 's' : ''})`;
+  }
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      {/* Header */}
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
-        <Box>
-          <Typography variant="subtitle1" fontWeight="bold">
-            {order?.buyer?.buyerRegistrationAddress?.fullName || order?.buyer?.username || 'Buyer Chat'}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Order #{order?.orderId}
-          </Typography>
-        </Box>
-        <IconButton onClick={onClose}>
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
+      
+      {/* --- HEADER (MATCHING BUYER CHAT PAGE) --- */}
+      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: '#fff', position: 'relative' }}>
+        
+        {/* Top Right: Seller Chip & Close */}
+        <Stack 
+          direction="row" 
+          spacing={1} 
+          alignItems="center" 
+          sx={{ position: 'absolute', top: 12, right: 12 }}
+        >
+          <Chip 
+            label={sellerName} 
+            size="small" 
+            icon={<PersonIcon style={{ fontSize: 16 }} />} 
+            sx={{ 
+              bgcolor: '#e3f2fd', 
+              color: '#1565c0', 
+              fontWeight: 'bold', 
+              height: 24,
+              fontSize: '0.75rem'
+            }} 
+          />
+          <IconButton onClick={onClose} size="small" sx={{ color: 'text.disabled', ml: 1 }}>
+            <CloseIcon />
+          </IconButton>
+        </Stack>
 
-      {/* Chat Area */}
+        {/* Main Content: Buyer & Item */}
+        <Stack spacing={1.5} sx={{ pr: 12 }}> 
+          
+          {/* 1. Buyer Info */}
+          <Stack direction="row" alignItems="center" spacing={3} sx={{ mt: 0.5 }}>
+              <Box>
+                  <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                      Buyer Name
+                  </Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.1 }}>
+                      {buyerName}
+                  </Typography>
+              </Box>
+
+              <Divider orientation="vertical" flexItem sx={{ height: 20, alignSelf: 'center', opacity: 0.5 }} />
+
+              <Box>
+                  <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                      Username
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontFamily: 'monospace', bgcolor: 'rgba(0,0,0,0.05)', px: 0.5, borderRadius: 0.5 }}>
+                      {buyerUsername}
+                  </Typography>
+              </Box>
+          </Stack>
+
+          {/* 2. Item Link & Order ID */}
+          <Box>
+              <Link 
+                  href={`https://www.ebay.com/itm/${itemId}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  underline="hover"
+                  sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}
+              >
+                  <Typography 
+                      variant="subtitle2" 
+                      sx={{ 
+                          color: 'primary.main', 
+                          fontWeight: 600,
+                          lineHeight: 1.3
+                      }}
+                  >
+                       {itemTitle || `Item ID: ${itemId}`}
+                  </Typography>
+                  <OpenInNewIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.3 }} />
+              </Link>
+
+              <Chip 
+                  label={`Order #: ${order?.orderId}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ 
+                      borderRadius: 1, 
+                      height: 22, 
+                      fontSize: '0.7rem',
+                      color: 'text.secondary',
+                      borderColor: 'divider',
+                      bgcolor: '#fafafa'
+                  }}
+              />
+          </Box>
+        </Stack>
+      </Box>
+
+      {/* --- CHAT AREA (MATCHING BUYER CHAT PAGE) --- */}
       <DialogContent sx={{ p: 0, bgcolor: '#f0f2f5', height: '500px', display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ flex: 1, p: 2, overflowY: 'auto' }}>
           {loading ? (
@@ -165,7 +258,7 @@ function ChatDialog({ open, onClose, order }) {
                   key={msg._id} 
                   sx={{ 
                     alignSelf: msg.sender === 'SELLER' ? 'flex-end' : 'flex-start',
-                    maxWidth: '75%'
+                    maxWidth: '70%' // Constrain width like Buyer Chat
                   }}
                 >
                   <Paper 
@@ -175,9 +268,11 @@ function ChatDialog({ open, onClose, order }) {
                       bgcolor: msg.sender === 'SELLER' ? '#1976d2' : '#ffffff',
                       color: msg.sender === 'SELLER' ? '#fff' : 'text.primary',
                       borderRadius: 2,
+                      position: 'relative'
                     }}
                   >
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{msg.body}</Typography>
+                     
                      {/* Images */}
                      {msg.mediaUrls && msg.mediaUrls.length > 0 && (
                         <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -187,7 +282,14 @@ function ChatDialog({ open, onClose, order }) {
                                 component="img"
                                 src={url}
                                 alt="Attachment"
-                                sx={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 1, cursor: 'pointer', border: '1px solid #ccc' }}
+                                sx={{ 
+                                    width: 100, 
+                                    height: 100, 
+                                    objectFit: 'cover', 
+                                    borderRadius: 1, 
+                                    cursor: 'pointer', 
+                                    border: '1px solid #ccc' 
+                                }}
                                 onClick={() => window.open(url, '_blank')}
                             />
                           ))}
@@ -205,7 +307,7 @@ function ChatDialog({ open, onClose, order }) {
           )}
         </Box>
 
-        {/* Input Area */}
+        {/* --- INPUT AREA --- */}
         <Box sx={{ p: 2, bgcolor: '#fff', borderTop: 1, borderColor: 'divider', display: 'flex', gap: 1 }}>
           <TextField
             fullWidth

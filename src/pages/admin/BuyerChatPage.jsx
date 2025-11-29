@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   Box, Paper, Typography, List, ListItem, ListItemText, ListItemAvatar,
   Avatar, TextField, Button, Divider, Badge, Stack, CircularProgress, 
-  IconButton, Chip, Alert, FormControl, Select, MenuItem, InputLabel
+  IconButton, Chip, Alert, FormControl, Select, MenuItem, InputLabel,Link
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
@@ -10,7 +10,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
-import CloseIcon from '@mui/icons-material/Close'; // <--- IMPORT ADDED
+import CloseIcon from '@mui/icons-material/Close'; 
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import api from '../../lib/api';
 
 export default function BuyerChatPage() {
@@ -68,7 +69,7 @@ export default function BuyerChatPage() {
     if (selectedThread && !selectedThread.isNew) {
       pollingIntervalRef.current = setInterval(() => {
         pollActiveThread();
-      },60000);
+      },10000);
     }
 
     return () => {
@@ -457,19 +458,29 @@ export default function BuyerChatPage() {
         </Box>
     </Stack>
 
+    
     {/* 2. PRODUCT & ORDER */}
     <Box>
-        <Typography 
-            variant="subtitle2" 
-            sx={{ 
-                color: 'primary.main', 
-                fontWeight: 600,
-                lineHeight: 1.3,
-                mb: 0.5
-            }}
+        {/* REPLACING TYPOGRAPHY WITH LINK */}
+        <Link 
+            href={`https://www.ebay.com/itm/${selectedThread.itemId}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            underline="hover"
+            sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}
         >
-             {selectedThread.itemTitle || `Item ID: ${selectedThread.itemId}`}
-        </Typography>
+            <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                    color: 'primary.main', 
+                    fontWeight: 600,
+                    lineHeight: 1.3
+                }}
+            >
+                 {selectedThread.itemTitle || `Item ID: ${selectedThread.itemId}`}
+            </Typography>
+            <OpenInNewIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.3 }} />
+        </Link>
 
         {selectedThread.orderId && (
             <Chip 
