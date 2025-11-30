@@ -66,6 +66,8 @@ import BuyerChatPage from '../pages/admin/BuyerChatPage.jsx';
 import DashboardIcon from '@mui/icons-material/Dashboard'; // Add this icon
 import CompatibilityDashboard from '../pages/compatibility/CompatibilityDashboard.jsx';
 
+import ConversationManagementPage from '../pages/admin/ConversationManagementPage.jsx';
+
 
 
 
@@ -233,6 +235,9 @@ export default function AdminLayout({ user, onLogout }) {
                 <ListItemButton component={Link} to="/admin/message-received" onClick={() => setMobileOpen(false)}>
                   <ListItemText primary="Buyer Messages" />
                 </ListItemButton>
+                <ListItemButton component={Link} to="/admin/conversation-management" onClick={() => setMobileOpen(false)}>
+  <ListItemText primary="Conversation Mgmt" />
+</ListItemButton>
               </List>
             </Collapse>
           </>
@@ -463,6 +468,7 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/inr" element={<INRPage />} />
               <Route path="/return-requested" element={<ReturnRequestedPage />} />
               <Route path="/message-received" element={<BuyerChatPage/>} />
+              <Route path="/conversation-management" element={<ConversationManagementPage />} />
             </>
           )}
           <Route path="*" element={<Navigate to={isProductAdmin || isSuper ? "/admin/research" : isListingAdmin ? "/admin/listing" : isCompatibilityAdmin ? "/admin/compatibility-tasks" : isCompatibilityEditor ? "/admin/compatibility-editor" : isFulfillmentAdmin ? "/admin/fulfillment" : isHRAdmin || isOperationHead ? "/admin/employee-details" : "/admin/about-me"} replace />} />

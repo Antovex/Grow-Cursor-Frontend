@@ -12,6 +12,8 @@ import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
 import CloseIcon from '@mui/icons-material/Close'; 
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import SaveIcon from '@mui/icons-material/Save';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import api from '../../lib/api';
 
 export default function BuyerChatPage() {
@@ -29,9 +31,77 @@ export default function BuyerChatPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingThreads, setLoadingThreads] = useState(false);
+
+  const [metaCategory, setMetaCategory] = useState('');
+  const [metaCaseStatus, setMetaCaseStatus] = useState('');
+  const [savingMeta, setSavingMeta] = useState(false);
+
   
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
+
+
+
+
+
+  useEffect(() => {
+    if (selectedThread && !selectedThread.isNew) {
+      fetchMeta(selectedThread);
+    } else {
+      setMetaCategory('');
+      setMetaCaseStatus('');
+    }
+  }, [selectedThread]);
+
+  async function fetchMeta(thread) {
+    try {
+      const params = {
+        sellerId: thread.sellerId,
+        buyerUsername: thread.buyerUsername,
+        itemId: thread.itemId,
+        orderId: thread.orderId || ''
+      };
+      
+      const { data } = await api.get('/ebay/conversation-meta/single', { params });
+      // If data exists, fill state. If not, reset to empty/default.
+      if (data && data._id) {
+        setMetaCategory(data.category);
+        setMetaCaseStatus(data.caseStatus);
+      } else {
+        setMetaCategory('');
+        setMetaCaseStatus('');
+      }
+    } catch (e) {
+      console.error("Failed to fetch meta tags", e);
+    }
+  }
+
+  async function handleSaveMeta() {
+    if (!metaCategory || !metaCaseStatus) {
+      alert("Please select both 'About' and 'Case' fields.");
+      return;
+    }
+
+    setSavingMeta(true);
+    try {
+      await api.post('/ebay/conversation-meta', {
+        sellerId: selectedThread.sellerId,
+        buyerUsername: selectedThread.buyerUsername,
+        orderId: selectedThread.orderId,
+        itemId: selectedThread.itemId,
+        category: metaCategory,
+        caseStatus: metaCaseStatus
+      });
+      // Optional: Show a small success toast or icon change
+    } catch (e) {
+      alert("Failed to save tags: " + e.message);
+    } finally {
+      setSavingMeta(false);
+    }
+  }
+
+
+  
 
   async function fetchSellers() {
     try {
@@ -407,6 +477,51 @@ export default function BuyerChatPage() {
     alignItems="center" 
     sx={{ position: 'absolute', top: 12, right: 12 }}
   >
+
+{/* 1. DROPDOWN: Conversation About */}
+                 <FormControl size="small" sx={{ minWidth: 140 }}>
+                    <InputLabel sx={{ fontSize: '0.8rem' }}>About</InputLabel>
+                    <Select
+                      value={metaCategory}
+                      label="About"
+                      onChange={(e) => setMetaCategory(e.target.value)}
+                      sx={{ height: 32, fontSize: '0.8rem' }}
+                    >
+                      <MenuItem value="INR">INR</MenuItem>
+                      <MenuItem value="Cancellation">Cancellation</MenuItem>
+                      <MenuItem value="Return">Return</MenuItem>
+                      <MenuItem value="Out of Stock">Out of Stock</MenuItem>
+                      <MenuItem value="Issue with Product">Issue with Product</MenuItem>
+                      <MenuItem value="Inquiry">Inquiry</MenuItem>
+                    </Select>
+                 </FormControl>
+
+                 {/* 2. DROPDOWN: Case Status */}
+                 <FormControl size="small" sx={{ minWidth: 140 }}>
+                    <InputLabel sx={{ fontSize: '0.8rem' }}>Case</InputLabel>
+                    <Select
+                      value={metaCaseStatus}
+                      label="Case"
+                      onChange={(e) => setMetaCaseStatus(e.target.value)}
+                      sx={{ height: 32, fontSize: '0.8rem' }}
+                    >
+                      <MenuItem value="Case Opened">Case Opened</MenuItem>
+                      <MenuItem value="Case Not Opened">Case Not Opened</MenuItem>
+                    </Select>
+                 </FormControl>
+
+                 {/* 3. SAVE BUTTON */}
+                 <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleSaveMeta}
+                    disabled={savingMeta}
+                    sx={{ minWidth: 40, height: 32, px: 1 }}
+                 >
+                    {savingMeta ? <CircularProgress size={16} color="inherit"/> : <SaveIcon fontSize="small"/>}
+                 </Button>
+
+
      {/* Seller Name */}
     <Chip 
       label={getSellerName(selectedThread.sellerId)} 
