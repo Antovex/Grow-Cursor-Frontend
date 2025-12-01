@@ -313,23 +313,7 @@ export default function AdminLayout({ user, onLogout }) {
           </ListItem>
         )}
 
-        {/* Legacy Fulfillment Admin Link (Optional, kept for safety if they prefer direct link) */}
-        {(isFulfillmentAdmin) && (
-          <>
-            <ListItem disablePadding>
-              <ListItemButton component={Link} to="/admin/fulfillment" onClick={() => setMobileOpen(false)}>
-                <ListItemIcon><LocalShippingIcon /></ListItemIcon>
-                <ListItemText primary="Fulfillment Orders" />
-              </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-              <ListItemButton component={Link} to="/admin/awaiting-shipment" onClick={() => setMobileOpen(false)}>
-                <ListItemIcon><LocalShippingIcon /></ListItemIcon>
-                <ListItemText primary="Awaiting Shipment" />
-              </ListItemButton>
-            </ListItem>
-          </>
-        )}
+       
 
         {(isSuper || isHRAdmin || isOperationHead) && (
           <>
