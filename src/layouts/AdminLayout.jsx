@@ -67,7 +67,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import CompatibilityDashboard from '../pages/compatibility/CompatibilityDashboard.jsx';
 
 import ConversationManagementPage from '../pages/admin/ConversationManagementPage.jsx';
-
+import ManageAmazonAccountsPage from '../pages/admin/ManageAmazonAccountsPage.jsx';
 const drawerWidth = 230;
 
 export default function AdminLayout({ user, onLogout }) {
@@ -230,6 +230,9 @@ export default function AdminLayout({ user, onLogout }) {
                 <ListItemButton component={Link} to="/admin/conversation-management" onClick={() => setMobileOpen(false)}>
                   <ListItemText primary="Conversation Mgmt" />
                 </ListItemButton>
+                <ListItemButton component={Link} to="/admin/amazon-accounts" onClick={() => setMobileOpen(false)}>
+    <ListItemText primary="Manage Amazon Accts" />
+  </ListItemButton>
               </List>
             </Collapse>
           </>
@@ -434,6 +437,7 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/return-requested" element={<ReturnRequestedPage />} />
               <Route path="/message-received" element={<BuyerChatPage/>} />
               <Route path="/conversation-management" element={<ConversationManagementPage />} />
+              <Route path="/amazon-accounts" element={<ManageAmazonAccountsPage />} />
             </>
           )}
           

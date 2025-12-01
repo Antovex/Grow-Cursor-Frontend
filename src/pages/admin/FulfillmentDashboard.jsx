@@ -348,6 +348,9 @@ function ChatDialog({ open, onClose, order }) {
 function EditableCell({ value, type = 'text', onSave }) {
   const [editing, setEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value || '');
+ 
+
+ 
 
   useEffect(() => { setTempValue(value || ''); }, [value]);
 
@@ -427,6 +430,8 @@ export default function FulfillmentDashboard() {
 
   const [searchStartDate, setSearchStartDate] = useState('');
 const [searchEndDate, setSearchEndDate] = useState('');
+
+ const [amazonAccounts, setAmazonAccounts] = useState([]);
   
 
 const [dateFilter, setDateFilter] = useState({
@@ -458,6 +463,10 @@ const updateManualField = async (orderId, field, value) => {
     setSnackbarOpen(true);
   }
 };
+
+ useEffect(() => {
+    api.get('/amazon-accounts').then(({ data }) => setAmazonAccounts(data || [])).catch(console.error);
+  }, []);
 
 
 
@@ -1227,7 +1236,7 @@ function NotesCell({ order, onSave, onNotify }) {
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Amazon Acc</TableCell>
 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Arriving</TableCell>
 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Before Tax</TableCell>
-<TableCell sx={{ color: 'white', fontWeight: 'bold' }}>After Tax</TableCell>
+<TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Estimated Tax</TableCell>
 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Az OrderID</TableCell>
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Notes</TableCell>
            
@@ -1577,9 +1586,10 @@ function NotesCell({ order, onSave, onNotify }) {
 
 {/* 1. Amazon Account */}
 <TableCell>
-  <AutoSaveTextField 
-    value={order.amazonAccount} 
-    onSave={(val) => updateManualField(order._id, 'amazonAccount', val)} 
+  <AutoSaveSelect
+    value={order.amazonAccount}
+    options={amazonAccounts}
+    onSave={(val) => updateManualField(order._id, 'amazonAccount', val)}
   />
 </TableCell>
 
@@ -1809,5 +1819,45 @@ function AutoSaveTextField({ value, type = 'text', onSave }) {
         '& input': { padding: '6px 8px', fontSize: '0.85rem' }
       }}
     />
+  );
+}
+
+function AutoSaveSelect({ value, options, onSave }) {
+  const [localValue, setLocalValue] = useState(value || '');
+
+  useEffect(() => {
+    setLocalValue(value || '');
+  }, [value]);
+
+  const handleChange = (e) => {
+    const newVal = e.target.value;
+    setLocalValue(newVal);
+    onSave(newVal); // Auto-save immediately on selection
+  };
+
+  return (
+    <Select
+      value={localValue}
+      onChange={handleChange}
+      displayEmpty
+      size="small"
+      sx={{ 
+        backgroundColor: '#fff', 
+        borderRadius: 1,
+        minWidth: 130,
+        height: 32,
+        fontSize: '0.85rem',
+        '& .MuiSelect-select': { py: 0.5, px: 1 }
+      }}
+    >
+      <MenuItem value="">
+        <em style={{ color: '#aaa' }}>- Select -</em>
+      </MenuItem>
+      {options.map((opt) => (
+        <MenuItem key={opt._id} value={opt.name}>
+          {opt.name}
+        </MenuItem>
+      ))}
+    </Select>
   );
 }
