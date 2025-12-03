@@ -1611,12 +1611,12 @@ function NotesCell({ order, onSave, onNotify }) {
   />
 </TableCell>
 
-{/* 4. After Tax */}
+{/* 4. Estimated Tax */}
 <TableCell>
   <AutoSaveTextField 
     type="number"
-    value={order.afterTax} 
-    onSave={(val) => updateManualField(order._id, 'afterTax', val)} 
+    value={order.estimatedTax} 
+    onSave={(val) => updateManualField(order._id, 'estimatedTax', val)} 
   />
 </TableCell>
 
