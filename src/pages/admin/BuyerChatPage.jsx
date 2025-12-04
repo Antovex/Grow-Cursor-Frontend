@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   Box, Paper, Typography, List, ListItem, ListItemText, ListItemAvatar,
   Avatar, TextField, Button, Divider, Badge, Stack, CircularProgress, 
-  IconButton, Chip, Alert, FormControl, Select, MenuItem, InputLabel,Link
+  IconButton, Chip, Alert, FormControl, Select, MenuItem, InputLabel, Link,
+  Snackbar
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
@@ -16,18 +17,35 @@ import SaveIcon from '@mui/icons-material/Save';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import api from '../../lib/api';
 
+// Session storage key for persisting state
+const CHAT_STORAGE_KEY = 'buyer_chat_page_state';
+
+// Helper to get initial state from sessionStorage
+const getInitialState = (key, defaultValue) => {
+  try {
+    const stored = sessionStorage.getItem(CHAT_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed[key] !== undefined ? parsed[key] : defaultValue;
+    }
+  } catch (e) {
+    console.error('Error reading sessionStorage:', e);
+  }
+  return defaultValue;
+};
+
 export default function BuyerChatPage() {
   const [threads, setThreads] = useState([]);
-  const [selectedThread, setSelectedThread] = useState(null);
+  const [selectedThread, setSelectedThread] = useState(() => getInitialState('selectedThread', null));
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [syncingInbox, setSyncingInbox] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => getInitialState('searchQuery', ''));
   const [searchError, setSearchError] = useState('');
   const [sellers, setSellers] = useState([]); 
-  const [selectedSeller, setSelectedSeller] = useState('');
+  const [selectedSeller, setSelectedSeller] = useState(() => getInitialState('selectedSeller', ''));
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingThreads, setLoadingThreads] = useState(false);
@@ -36,9 +54,29 @@ export default function BuyerChatPage() {
   const [metaCaseStatus, setMetaCaseStatus] = useState('');
   const [savingMeta, setSavingMeta] = useState(false);
 
+  // Snackbar state for sync results
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('info');
+
   
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
+  const hasFetchedInitialData = useRef(false);
+
+  // Persist state to sessionStorage
+  useEffect(() => {
+    const stateToSave = {
+      selectedThread,
+      searchQuery,
+      selectedSeller
+    };
+    try {
+      sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch (e) {
+      console.error('Error saving to sessionStorage:', e);
+    }
+  }, [selectedThread, searchQuery, selectedSeller]);
 
 
 
@@ -112,19 +150,45 @@ export default function BuyerChatPage() {
     }
   }
 
-  // 1. Initial Load
+  // 1. Initial Load - only run once
   useEffect(() => {
-    fetchSellers(); // Fetch sellers on mount
-    
+    if (!hasFetchedInitialData.current) {
+      hasFetchedInitialData.current = true;
+      fetchSellers();
+      loadThreads(true);
+      
+      // If we have a restored selectedThread, load its messages
+      if (selectedThread && !selectedThread.isNew) {
+        loadMessages(selectedThread);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      setPage(1); // Reset page
-      loadThreads(true); // True = Reset List
-    }, 500); // 500ms delay to stop API spam while typing
+  // Track previous values to detect actual changes
+  const prevSearchQuery = useRef(searchQuery);
+  const prevSelectedSeller = useRef(selectedSeller);
+  const isFirstRender = useRef(true);
 
-    return () => clearTimeout(delayDebounceFn);
+  useEffect(() => {
+    // Skip on first render (initial data already loaded above)
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    // Only reload if values actually changed
+    if (prevSearchQuery.current !== searchQuery || prevSelectedSeller.current !== selectedSeller) {
+      prevSearchQuery.current = searchQuery;
+      prevSelectedSeller.current = selectedSeller;
+      
+      const delayDebounceFn = setTimeout(() => {
+        setPage(1);
+        loadThreads(true);
+      }, 500);
+
+      return () => clearTimeout(delayDebounceFn);
+    }
   }, [searchQuery, selectedSeller]);
 
   // 2. Scroll Effect
@@ -153,20 +217,40 @@ export default function BuyerChatPage() {
 
   // API CALLS
   async function handleManualSync() {
-  setSyncingInbox(true);
-  try {
-    const res = await api.post('/ebay/sync-inbox');
-    if (res.data.success) {
-      // PASS TRUE TO RESET THE LIST AND SHOW NEWEST MESSAGES AT TOP
-      setPage(1); 
-      loadThreads(true); 
+    setSyncingInbox(true);
+    try {
+      const res = await api.post('/ebay/sync-inbox');
+      if (res.data.success) {
+        // PASS TRUE TO RESET THE LIST AND SHOW NEWEST MESSAGES AT TOP
+        setPage(1); 
+        loadThreads(true);
+        
+        // Show snackbar with results
+        const { syncResults, totalNewMessages } = res.data;
+        if (totalNewMessages > 0 && syncResults) {
+          // Build summary by seller
+          const sellerSummary = syncResults
+            .filter(r => r.newMessages > 0)
+            .map(r => `${r.sellerName}: ${r.newMessages} new`)
+            .join('\n');
+          
+          setSnackbarMsg(`Found ${totalNewMessages} new message${totalNewMessages > 1 ? 's' : ''}!\n\n${sellerSummary}`);
+          setSnackbarSeverity('success');
+        } else {
+          setSnackbarMsg('No new messages found.');
+          setSnackbarSeverity('info');
+        }
+        setSnackbarOpen(true);
+      }
+    } catch (e) {
+      console.error("Inbox Sync failed", e);
+      setSnackbarMsg('Sync failed: ' + (e.response?.data?.error || e.message));
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setSyncingInbox(false);
     }
-  } catch (e) {
-    console.error("Inbox Sync failed", e);
-  } finally {
-    setSyncingInbox(false);
   }
-}
 
  async function pollActiveThread() {
     // SAFETY CHECK: Don't poll if we don't have the required IDs
@@ -200,7 +284,7 @@ export default function BuyerChatPage() {
       const currentPage = reset ? 1 : page;
       const params = { 
         page: currentPage, 
-        limit: 20,
+        limit: 50,
         search: searchQuery 
       };
       
@@ -215,7 +299,7 @@ export default function BuyerChatPage() {
         setThreads(prev => [...prev, ...newThreads]);
       }
 
-      setHasMore(newThreads.length === 20); // If we got full page, assume more exists
+      setHasMore(newThreads.length === 50); // If we got full page, assume more exists
       setPage(currentPage + 1);
 
     } catch (e) {
@@ -718,6 +802,28 @@ export default function BuyerChatPage() {
           </Box>
         )}
       </Paper>
+
+      {/* Snackbar for sync results */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={8000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          sx={{ 
+            width: '100%', 
+            whiteSpace: 'pre-line',
+            minWidth: 300
+          }}
+          elevation={6}
+          variant="filled"
+        >
+          {snackbarMsg}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

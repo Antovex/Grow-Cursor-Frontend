@@ -58,6 +58,7 @@ import ReturnPage from '../pages/admin/ReturnPage.jsx';
 import ReplacePage from '../pages/admin/ReplacePage.jsx';
 import INRPage from '../pages/admin/INRPage.jsx';
 import ReturnRequestedPage from '../pages/admin/ReturnRequestedPage.jsx';
+import DisputesPage from '../pages/admin/DisputesPage.jsx';
 //import MessageReceivedPage from '../pages/admin/MessageReceivedPage.jsx';
 import AboutMePage from '../pages/AboutMePage.jsx';
 import EmployeeDetailsPage from '../pages/admin/EmployeeDetailsPage.jsx';
@@ -238,6 +239,9 @@ export default function AdminLayout({ user, onLogout }) {
                 
                 <ListItemButton component={Link} to="/admin/return-requested" onClick={() => setMobileOpen(false)}>
                   <ListItemText primary="Return Requests" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/admin/disputes" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="INR & Disputes" />
                 </ListItemButton>
                 <ListItemButton component={Link} to="/admin/message-received" onClick={() => setMobileOpen(false)}>
                   <ListItemText primary="Buyer Messages" />
@@ -451,6 +455,7 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/conversation-tracking" element={<ConversationTrackingPage />} />
               <Route path="/cancelled-status" element={<CancelledStatusPage />} />
               <Route path="/return-requested" element={<ReturnRequestedPage />} />
+              <Route path="/disputes" element={<DisputesPage />} />
               <Route path="/message-received" element={<BuyerChatPage/>} />
               <Route path="/conversation-management" element={<ConversationManagementPage />} />
               <Route path="/amazon-accounts" element={<ManageAmazonAccountsPage />} />

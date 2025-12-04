@@ -10,6 +10,7 @@ export default function SellerProfilePage() {
   const [ebayConnected, setEbayConnected] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [sellerData, setSellerData] = useState(null);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     // Check if redirected back from eBay with success
@@ -61,6 +62,26 @@ export default function SellerProfilePage() {
     window.location.href = `${serverUrl}/api/ebay/connect?token=${encodeURIComponent(token)}`;
   }
 
+  async function handleDisconnectEbay() {
+    if (!window.confirm('Are you sure you want to disconnect your eBay account? You will need to reconnect to use eBay features.')) {
+      return;
+    }
+    
+    setDisconnecting(true);
+    setError('');
+    try {
+      await api.delete('/sellers/disconnect-ebay');
+      setSuccessMessage('eBay account disconnected. You can reconnect with updated permissions.');
+      setEbayConnected(false);
+      setSellerData(prev => ({ ...prev, ebayTokens: {} }));
+    } catch (e) {
+      console.error('Failed to disconnect eBay:', e);
+      setError(e.response?.data?.error || 'Failed to disconnect eBay account');
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
   function handleLogout() {
     // Clear auth token
     sessionStorage.removeItem('auth_token');
@@ -104,10 +125,31 @@ export default function SellerProfilePage() {
               <span style={{ fontSize: 16, fontWeight: 'bold', color: '#28a745' }}>Connected</span>
             </div>
             {sellerData?.ebayTokens?.fetchedAt && (
-              <p style={{ fontSize: 14, color: '#6c757d', margin: 0 }}>
+              <p style={{ fontSize: 14, color: '#6c757d', marginBottom: 16 }}>
                 Connected on: {new Date(sellerData.ebayTokens.fetchedAt).toLocaleString()}
               </p>
             )}
+            <button 
+              type="button" 
+              onClick={handleDisconnectEbay}
+              disabled={disconnecting}
+              style={{ 
+                background: '#dc3545', 
+                color: '#fff', 
+                padding: '10px 20px', 
+                borderRadius: 6, 
+                border: 'none',
+                fontSize: 14,
+                fontWeight: 'bold',
+                cursor: disconnecting ? 'not-allowed' : 'pointer',
+                opacity: disconnecting ? 0.7 : 1
+              }}
+            >
+              {disconnecting ? 'Disconnecting...' : 'Disconnect eBay Account'}
+            </button>
+            <p style={{ fontSize: 12, color: '#6c757d', marginTop: 8, marginBottom: 0 }}>
+              Disconnect and reconnect to update eBay permissions.
+            </p>
           </div>
         ) : (
           <div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -20,23 +20,54 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Snackbar,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
+import ClearIcon from '@mui/icons-material/Clear';
 import api from '../../lib/api';
 
 export default function ReturnRequestedPage() {
   const [returns, setReturns] = useState([]);
+  const [sellers, setSellers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState('');
+  
+  // Snackbar state for sync results
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
-  const [statusFilter, setStatusFilter] = useState(''); // Filter by return status
+  
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sellerFilter, setSellerFilter] = useState('');
+  const [reasonFilter, setReasonFilter] = useState('');
+  
+  const hasFetchedInitialData = useRef(false);
 
+  // Fetch sellers on mount
   useEffect(() => {
+    async function fetchSellers() {
+      try {
+        const res = await api.get('/sellers/all');
+        setSellers(res.data || []);
+      } catch (e) {
+        console.error('Failed to fetch sellers:', e);
+      }
+    }
+    fetchSellers();
+  }, []);
+
+  // Load returns when filters change
+  useEffect(() => {
+    if (!hasFetchedInitialData.current) {
+      hasFetchedInitialData.current = true;
+      loadStoredReturns();
+      return;
+    }
     loadStoredReturns();
-  }, [statusFilter]);
+  }, [statusFilter, sellerFilter, reasonFilter]);
 
   async function loadStoredReturns() {
     setLoading(true);
@@ -44,6 +75,8 @@ export default function ReturnRequestedPage() {
     try {
       const params = {};
       if (statusFilter) params.status = statusFilter;
+      if (sellerFilter) params.sellerId = sellerFilter;
+      if (reasonFilter) params.reason = reasonFilter;
       
       const res = await api.get('/ebay/stored-returns', { params });
       const returnData = res.data.returns || [];
@@ -60,26 +93,60 @@ export default function ReturnRequestedPage() {
   async function fetchReturnsFromEbay() {
     setFetching(true);
     setError('');
-    setSnackbarMsg('');
     try {
       const res = await api.post('/ebay/fetch-returns');
       const { totalNewReturns, totalUpdatedReturns, results, errors } = res.data;
       
-      let msg = `✅ Fetch complete!\n`;
-      msg += `New returns: ${totalNewReturns}\n`;
-      msg += `Updated returns: ${totalUpdatedReturns}\n\n`;
+      // Build snackbar message with per-seller breakdown and update details
+      let msgParts = [];
+      let updateDetailsParts = [];
       
       if (results && results.length > 0) {
         results.forEach(r => {
-          msg += `${r.sellerName}: ${r.newReturns} new, ${r.updatedReturns} updated\n`;
+          if (r.newReturns > 0 || r.updatedReturns > 0) {
+            let parts = [];
+            if (r.newReturns > 0) parts.push(`${r.newReturns} new`);
+            if (r.updatedReturns > 0) parts.push(`${r.updatedReturns} updated`);
+            msgParts.push(`${r.sellerName}: ${parts.join(', ')}`);
+            
+            // Collect update details for snackbar
+            if (r.updateDetails && r.updateDetails.length > 0) {
+              r.updateDetails.forEach(ud => {
+                let changeDesc = [];
+                if (ud.changes?.status) {
+                  changeDesc.push(`Status: ${ud.changes.status.from} → ${ud.changes.status.to}`);
+                }
+                if (ud.changes?.refund) {
+                  changeDesc.push(`Refund: $${ud.changes.refund.from} → $${ud.changes.refund.to}`);
+                }
+                if (changeDesc.length > 0) {
+                  updateDetailsParts.push(`• ${r.sellerName} | Return ${ud.returnId} | Order ${ud.orderId}: ${changeDesc.join(', ')}`);
+                }
+              });
+            }
+          }
         });
       }
       
-      if (errors && errors.length > 0) {
-        msg += `\n⚠️ Errors:\n${errors.join('\n')}`;
+      // Build final snackbar message
+      let finalMsg = '';
+      if (msgParts.length > 0) {
+        finalMsg = `✅ ${msgParts.join(' | ')}`;
+        if (updateDetailsParts.length > 0) {
+          finalMsg += `\n\n📝 Updates:\n${updateDetailsParts.join('\n')}`;
+        }
+      } else if (totalNewReturns === 0 && totalUpdatedReturns === 0) {
+        finalMsg = '✅ No new or updated returns found';
+      } else {
+        finalMsg = `✅ ${totalNewReturns} new, ${totalUpdatedReturns} updated`;
       }
       
-      setSnackbarMsg(msg);
+      setSnackbarMsg(finalMsg);
+      setSnackbarOpen(true);
+      
+      if (errors && errors.length > 0) {
+        setError(`⚠️ Errors: ${errors.join(', ')}`);
+      }
       
       // Reload returns from database
       await loadStoredReturns();
@@ -90,6 +157,12 @@ export default function ReturnRequestedPage() {
       setFetching(false);
     }
   }
+
+  const handleClearFilters = () => {
+    setStatusFilter('');
+    setSellerFilter('');
+    setReasonFilter('');
+  };
 
   const handleCopy = (text) => {
     const val = text || '-';
@@ -103,10 +176,13 @@ export default function ReturnRequestedPage() {
     if (!dateStr) return '-';
     try {
       const d = new Date(dateStr);
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const year = d.getFullYear();
-      return `${month}/${day}/${year}`;
+      // Convert to PST (America/Los_Angeles)
+      return d.toLocaleDateString('en-US', {
+        timeZone: 'America/Los_Angeles',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      });
     } catch {
       return '-';
     }
@@ -115,10 +191,28 @@ export default function ReturnRequestedPage() {
   const getStatusColor = (status) => {
     if (!status) return 'default';
     const s = status.toUpperCase();
-    if (s.includes('OPEN') || s.includes('PENDING')) return 'warning';
-    if (s.includes('CLOSED') || s.includes('RESOLVED')) return 'success';
-    if (s.includes('CANCELLED') || s.includes('DENIED')) return 'error';
+    if (s === 'RETURN_REQUESTED') return 'warning';
+    if (s === 'ITEM_READY_TO_SHIP' || s === 'RETURN_SHIPPED') return 'info';
+    if (s === 'CLOSED' || s === 'REFUND_ISSUED') return 'success';
+    if (s === 'CANCELLED' || s === 'DENIED') return 'error';
     return 'default';
+  };
+
+  const hasActiveFilters = statusFilter || sellerFilter || reasonFilter;
+
+  // Check if response due date is within next 2 days (urgent)
+  const isResponseUrgent = (responseDate) => {
+    if (!responseDate) return false;
+    const now = new Date();
+    const dueDate = new Date(responseDate);
+    const twoDaysFromNow = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    return dueDate <= twoDaysFromNow && dueDate >= now;
+  };
+
+  // Check if response due date has already passed
+  const isResponseOverdue = (responseDate) => {
+    if (!responseDate) return false;
+    return new Date(responseDate) < new Date();
   };
 
   return (
@@ -126,6 +220,9 @@ export default function ReturnRequestedPage() {
       <Stack direction="row" alignItems="center" spacing={2} mb={3}>
         <AssignmentReturnIcon sx={{ fontSize: 32, color: 'primary.main' }} />
         <Typography variant="h4">Return Requests</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+          Total: <strong>{returns.length}</strong> returns
+        </Typography>
       </Stack>
 
       {error && (
@@ -134,18 +231,24 @@ export default function ReturnRequestedPage() {
         </Alert>
       )}
 
-      {snackbarMsg && (
+      {/* Snackbar for sync results */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={10000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
         <Alert 
-          severity="info" 
-          sx={{ mb: 2, whiteSpace: 'pre-line' }} 
-          onClose={() => setSnackbarMsg('')}
+          onClose={() => setSnackbarOpen(false)} 
+          severity="success" 
+          sx={{ whiteSpace: 'pre-line', maxWidth: 600 }}
         >
           {snackbarMsg}
         </Alert>
-      )}
+      </Snackbar>
 
-      {/* Controls */}
-      <Stack direction="row" spacing={2} mb={3} alignItems="center">
+      {/* Controls Row 1: Fetch Button & Info */}
+      <Stack direction="row" spacing={2} mb={2} alignItems="center">
         <Button
           variant="contained"
           color="primary"
@@ -153,29 +256,82 @@ export default function ReturnRequestedPage() {
           onClick={fetchReturnsFromEbay}
           disabled={fetching}
         >
-          {fetching ? 'Fetching Returns...' : 'Fetch Returns from eBay'}
+          {fetching ? 'Fetching...' : 'Fetch Returns from eBay'}
         </Button>
-
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel>Status Filter</InputLabel>
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            label="Status Filter"
-          >
-            <MenuItem value="">All Statuses</MenuItem>
-            <MenuItem value="RETURN_OPEN">Open</MenuItem>
-            <MenuItem value="RETURN_CLOSED">Closed</MenuItem>
-            <MenuItem value="SELLER_CLOSED">Seller Closed</MenuItem>
-            <MenuItem value="RETURN_SHIPPED">Shipped</MenuItem>
-            <MenuItem value="REFUND_PENDING">Refund Pending</MenuItem>
-          </Select>
-        </FormControl>
-
-        <Typography variant="body2" color="text.secondary">
-          Total: {returns.length} returns
+        
+        <Typography variant="caption" color="text.secondary">
+          📅 Polls returns from <strong>last 30 days</strong> from eBay
         </Typography>
       </Stack>
+
+      {/* Controls Row 2: Filters */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+          {/* Seller Filter */}
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Seller</InputLabel>
+            <Select
+              value={sellerFilter}
+              onChange={(e) => setSellerFilter(e.target.value)}
+              label="Seller"
+            >
+              <MenuItem value="">All Sellers</MenuItem>
+              {sellers.map((s) => (
+                <MenuItem key={s._id} value={s._id}>
+                  {s.user?.username || s._id}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Status Filter */}
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              label="Status"
+            >
+              <MenuItem value="">All Statuses</MenuItem>
+              <MenuItem value="RETURN_REQUESTED">Return Requested</MenuItem>
+              <MenuItem value="ITEM_READY_TO_SHIP">Item Ready to Ship</MenuItem>
+              <MenuItem value="CLOSED">Closed</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Reason Filter */}
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel>Reason</InputLabel>
+            <Select
+              value={reasonFilter}
+              onChange={(e) => setReasonFilter(e.target.value)}
+              label="Reason"
+            >
+              <MenuItem value="">All Reasons</MenuItem>
+              <MenuItem value="WRONG_SIZE">Wrong Size</MenuItem>
+              <MenuItem value="NOT_AS_DESCRIBED">Not As Described</MenuItem>
+              <MenuItem value="DEFECTIVE_ITEM">Defective Item</MenuItem>
+              <MenuItem value="NO_LONGER_NEED_ITEM">No Longer Needed</MenuItem>
+              <MenuItem value="ORDERED_ACCIDENTALLY">Ordered Accidentally</MenuItem>
+              <MenuItem value="ARRIVED_DAMAGED">Arrived Damaged</MenuItem>
+              <MenuItem value="MISSING_PARTS">Missing Parts</MenuItem>
+              <MenuItem value="OTHER">Other</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button
+              size="small"
+              startIcon={<ClearIcon />}
+              onClick={handleClearFilters}
+              color="inherit"
+            >
+              Clear Filters
+            </Button>
+          )}
+        </Stack>
+      </Paper>
 
       {/* Table */}
       {loading ? (
@@ -195,8 +351,8 @@ export default function ReturnRequestedPage() {
                 <TableCell><strong>Reason</strong></TableCell>
                 <TableCell><strong>Status</strong></TableCell>
                 <TableCell><strong>Refund Amount</strong></TableCell>
-                <TableCell><strong>Created Date</strong></TableCell>
-                <TableCell><strong>Response Due</strong></TableCell>
+                <TableCell><strong>Created Date (PST)</strong></TableCell>
+                <TableCell><strong>Response Due (PST)</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -283,13 +439,32 @@ export default function ReturnRequestedPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography 
-                        variant="body2" 
-                        fontSize="0.75rem"
-                        color={ret.responseDate && new Date(ret.responseDate) < new Date() ? 'error' : 'inherit'}
-                      >
-                        {formatDate(ret.responseDate)}
-                      </Typography>
+                      <Stack direction="row" alignItems="center" spacing={0.5}>
+                        <Typography 
+                          variant="body2" 
+                          fontSize="0.75rem"
+                          color={isResponseOverdue(ret.responseDate) ? 'error' : 'inherit'}
+                          fontWeight={isResponseOverdue(ret.responseDate) || isResponseUrgent(ret.responseDate) ? 'bold' : 'normal'}
+                        >
+                          {formatDate(ret.responseDate)}
+                        </Typography>
+                        {isResponseOverdue(ret.responseDate) && (
+                          <Chip 
+                            label="OVERDUE" 
+                            color="error" 
+                            size="small" 
+                            sx={{ fontSize: '0.6rem', height: 18 }} 
+                          />
+                        )}
+                        {!isResponseOverdue(ret.responseDate) && isResponseUrgent(ret.responseDate) && (
+                          <Chip 
+                            label="URGENT" 
+                            color="warning" 
+                            size="small" 
+                            sx={{ fontSize: '0.6rem', height: 18 }} 
+                          />
+                        )}
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))

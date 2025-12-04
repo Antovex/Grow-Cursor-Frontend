@@ -383,7 +383,6 @@ function EditableCell({ value, type = 'text', onSave }) {
 
 export default function FulfillmentDashboard() {
   const [sellers, setSellers] = useState([]);
-  const [selectedSeller, setSelectedSeller] = useState('');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -392,15 +391,33 @@ export default function FulfillmentDashboard() {
   const [copied, setCopied] = useState(false);
   const [copiedText, setCopiedText] = useState('');
 
-  // Search filters
-  const [searchOrderId, setSearchOrderId] = useState('');
-  const [searchBuyerName, setSearchBuyerName] = useState('');
-  //const [searchSoldDate, setSearchSoldDate] = useState('');
-  const [searchMarketplace, setSearchMarketplace] = useState('');
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  // Session storage key for persisting state
+  const STORAGE_KEY = 'fulfillment_dashboard_state';
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  // Helper to get initial state from sessionStorage
+  const getInitialState = (key, defaultValue) => {
+    try {
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed[key] !== undefined ? parsed[key] : defaultValue;
+      }
+    } catch (e) {
+      console.error('Error reading sessionStorage:', e);
+    }
+    return defaultValue;
+  };
+
+  // Search filters - restored from sessionStorage
+  const [selectedSeller, setSelectedSeller] = useState(() => getInitialState('selectedSeller', ''));
+  const [searchOrderId, setSearchOrderId] = useState(() => getInitialState('searchOrderId', ''));
+  const [searchBuyerName, setSearchBuyerName] = useState(() => getInitialState('searchBuyerName', ''));
+  //const [searchSoldDate, setSearchSoldDate] = useState('');
+  const [searchMarketplace, setSearchMarketplace] = useState(() => getInitialState('searchMarketplace', ''));
+  const [filtersExpanded, setFiltersExpanded] = useState(() => getInitialState('filtersExpanded', false));
+
+  // Pagination state - restored from sessionStorage
+  const [currentPage, setCurrentPage] = useState(() => getInitialState('currentPage', 1));
   const [totalPages, setTotalPages] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
   const [ordersPerPage] = useState(50);
@@ -434,12 +451,30 @@ const [searchEndDate, setSearchEndDate] = useState('');
  const [amazonAccounts, setAmazonAccounts] = useState([]);
   
 
-const [dateFilter, setDateFilter] = useState({
+const [dateFilter, setDateFilter] = useState(() => getInitialState('dateFilter', {
     mode: 'none', // 'none' | 'single' | 'range'
     single: '',
     from: '',
     to: ''
-  });
+  }));
+
+  // Persist filter state to sessionStorage whenever it changes
+  useEffect(() => {
+    const stateToSave = {
+      selectedSeller,
+      searchOrderId,
+      searchBuyerName,
+      searchMarketplace,
+      filtersExpanded,
+      currentPage,
+      dateFilter
+    };
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch (e) {
+      console.error('Error saving to sessionStorage:', e);
+    }
+  }, [selectedSeller, searchOrderId, searchBuyerName, searchMarketplace, filtersExpanded, currentPage, dateFilter]);
 
 
 const updateManualField = async (orderId, field, value) => {
@@ -464,29 +499,81 @@ const updateManualField = async (orderId, field, value) => {
   }
 };
 
- useEffect(() => {
-    api.get('/amazon-accounts').then(({ data }) => setAmazonAccounts(data || [])).catch(console.error);
+  // Track if this is the initial mount
+  const isInitialMount = useRef(true);
+  const hasFetchedInitialData = useRef(false);
+  
+  // Track previous filter values to detect changes
+  const prevFilters = useRef({
+    selectedSeller,
+    searchOrderId,
+    searchBuyerName,
+    searchMarketplace,
+    dateFilter
+  });
+
+  // Fetch amazon accounts once
+  useEffect(() => {
+    if (!hasFetchedInitialData.current) {
+      api.get('/amazon-accounts').then(({ data }) => setAmazonAccounts(data || [])).catch(console.error);
+    }
   }, []);
 
-
-
+  // Initial load - fetch sellers and orders once
   useEffect(() => {
-    fetchSellers();
-    loadStoredOrders();
+    if (!hasFetchedInitialData.current) {
+      hasFetchedInitialData.current = true;
+      fetchSellers();
+      loadStoredOrders();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reload orders when page changes (but not on initial mount)
   useEffect(() => {
-    setCurrentPage(1); // Reset to page 1 when seller changes
+    // Skip on initial mount (already loaded above)
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     loadStoredOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSeller]);
+  }, [currentPage]);
 
-  // Reload orders when page or filters change
+  // When filters change, reset to page 1 and reload
   useEffect(() => {
-    loadStoredOrders();
+    // Check if any filter actually changed
+    const filtersChanged = 
+      prevFilters.current.selectedSeller !== selectedSeller ||
+      prevFilters.current.searchOrderId !== searchOrderId ||
+      prevFilters.current.searchBuyerName !== searchBuyerName ||
+      prevFilters.current.searchMarketplace !== searchMarketplace ||
+      JSON.stringify(prevFilters.current.dateFilter) !== JSON.stringify(dateFilter);
+    
+    // Update prev filters
+    prevFilters.current = {
+      selectedSeller,
+      searchOrderId,
+      searchBuyerName,
+      searchMarketplace,
+      dateFilter
+    };
+
+    // Skip on initial mount
+    if (!hasFetchedInitialData.current) return;
+
+    if (filtersChanged) {
+      // Reset to page 1 when filters change
+      if (currentPage === 1) {
+        // Already on page 1, just reload
+        loadStoredOrders();
+      } else {
+        // This will trigger the currentPage useEffect above
+        setCurrentPage(1);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, searchOrderId, searchBuyerName, searchMarketplace, dateFilter]);
+  }, [selectedSeller, searchOrderId, searchBuyerName, searchMarketplace, dateFilter]);
 
   async function fetchSellers() {
     setError('');
@@ -775,6 +862,12 @@ function NotesCell({ order, onSave, onNotify }) {
     try {
       const { data } = await api.post('/ebay/poll-new-orders');
       setPollResults(data || null);
+      
+      // Reset filters to show all sellers and go to page 1
+      setSelectedSeller('');
+      setCurrentPage(1);
+      
+      // Reload orders with reset filters
       await loadStoredOrders();
 
       if (data && data.totalNewOrders > 0) {
@@ -809,6 +902,12 @@ function NotesCell({ order, onSave, onNotify }) {
     try {
       const { data } = await api.post('/ebay/poll-order-updates');
       setPollResults(data || null);
+      
+      // Reset filters to show all sellers and go to page 1
+      setSelectedSeller('');
+      setCurrentPage(1);
+      
+      // Reload orders with reset filters
       await loadStoredOrders();
 
       if (data && data.totalUpdatedOrders > 0) {
@@ -1000,7 +1099,42 @@ function NotesCell({ order, onSave, onNotify }) {
   };
 
   return (
-    <Box>
+    <Box sx={{ position: 'relative' }}>
+      {/* LOADING OVERLAY */}
+      {loading && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+        >
+          <Paper
+            elevation={4}
+            sx={{
+              p: 3,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2,
+              borderRadius: 2,
+            }}
+          >
+            <CircularProgress size={48} />
+            <Typography variant="body1" color="text.secondary">
+              Loading orders...
+            </Typography>
+          </Paper>
+        </Box>
+      )}
+
       {/* HEADER SECTION */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
@@ -1008,14 +1142,21 @@ function NotesCell({ order, onSave, onNotify }) {
             <LocalShippingIcon color="primary" />
             <Typography variant="h5" fontWeight="bold">Fulfillment Dashboard</Typography>
           </Stack>
-          {orders.length > 0 && (
-            <Chip
-              icon={<ShoppingCartIcon />}
-              label={`${orders.length} orders`}
-              color="primary"
-              variant="outlined"
-            />
-          )}
+          <Stack direction="row" alignItems="center" spacing={1}>
+            {totalOrders > 0 && (
+              <Chip
+                icon={<ShoppingCartIcon />}
+                label={`${totalOrders} total orders`}
+                color="primary"
+                variant="filled"
+              />
+            )}
+            {orders.length > 0 && totalPages > 1 && (
+              <Typography variant="body2" color="text.secondary">
+                (Page {currentPage} of {totalPages})
+              </Typography>
+            )}
+          </Stack>
         </Stack>
 
         <Divider sx={{ my: 2 }} />
@@ -1198,12 +1339,7 @@ function NotesCell({ order, onSave, onNotify }) {
       </Paper>
 
       {/* TABLE SECTION */}
-      {loading && !orders.length ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <CircularProgress />
-          <Typography variant="body2" sx={{ mt: 2 }}>Loading orders...</Typography>
-        </Paper>
-      ) : orders.length === 0 ? (
+      {orders.length === 0 && !loading ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <ShoppingCartIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
           <Typography variant="body1" color="text.secondary">
