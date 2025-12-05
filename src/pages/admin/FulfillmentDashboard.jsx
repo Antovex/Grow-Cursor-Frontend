@@ -1132,7 +1132,14 @@ function NotesCell({ order, onSave, onNotify }) {
   };
 
   return (
-    <Box sx={{ position: 'relative' }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: 'calc(100vh - 100px)', // Full viewport minus top toolbar
+      overflow: 'hidden',
+      width: '100%',
+      maxWidth: '100%'
+    }}>
       {/* LOADING OVERLAY */}
       {loading && (
         <Box
@@ -1168,8 +1175,8 @@ function NotesCell({ order, onSave, onNotify }) {
         </Box>
       )}
 
-      {/* HEADER SECTION */}
-      <Paper sx={{ p: 2, mb: 2 }}>
+      {/* HEADER SECTION - FIXED */}
+      <Paper sx={{ p: 2, mb: 2, flexShrink: 0 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
           <Stack direction="row" alignItems="center" spacing={1}>
             <LocalShippingIcon color="primary" />
@@ -1413,36 +1420,64 @@ function NotesCell({ order, onSave, onNotify }) {
           </Typography>
         </Paper>
       ) : (
-        <TableContainer component={Paper}>
-          <Table size="small" sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}>
+        <TableContainer 
+          component={Paper} 
+          sx={{ 
+            flexGrow: 1, 
+            overflow: 'auto',
+            maxHeight: 'calc(100% - 50px)', // Reduced from 80px to 50px for smaller footer
+            width: '100%',
+            // Custom scrollbar styling
+            '&::-webkit-scrollbar': {
+              width: '8px',
+              height: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: '#f1f1f1',
+              borderRadius: '10px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: '#888',
+              borderRadius: '10px',
+              '&:hover': {
+                backgroundColor: '#555',
+              },
+            },
+          }}
+        >
+          <Table 
+            size="small" 
+            stickyHeader
+            sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}
+          >
             <TableHead>
-              <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>SL No</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Seller</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Order ID</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Date Sold</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Ship By</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Product Name</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Buyer Name</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Shipping Address</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Marketplace</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Subtotal</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Shipping</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Sales Tax</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Discount</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Transaction Fees</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Ad Fee General</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Cancel Status</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Refunds</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Tracking Number</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Amazon Acc</TableCell>
-<TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Arriving</TableCell>
-<TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Before Tax</TableCell>
-<TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Estimated Tax</TableCell>
-<TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Az OrderID</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Notes</TableCell>
+              <TableRow>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>SL No</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Seller</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Order ID</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Date Sold</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Ship By</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Product Name</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Buyer Name</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Shipping Address</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Marketplace</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }} align="right">Subtotal</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }} align="right">Shipping</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }} align="right">Sales Tax</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }} align="right">Discount</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }} align="right">Transaction Fees</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }} align="right">Ad Fee General</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Cancel Status</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Refunds</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Tracking Number</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Amazon Acc</TableCell>
+<TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Arriving</TableCell>
+<TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Before Tax</TableCell>
+<TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Estimated Tax</TableCell>
+<TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Az OrderID</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Notes</TableCell>
            
-                <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign: 'center' }}>Action</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100, textAlign: 'center' }}>Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -1844,10 +1879,21 @@ function NotesCell({ order, onSave, onNotify }) {
         </TableContainer>
       )}
 
-      {/* Pagination Controls */}
+      {/* Pagination Controls - FIXED AT BOTTOM */}
       {!loading && orders.length > 0 && totalPages > 1 && (
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
-          <Typography variant="body2" color="text.secondary">
+        <Box sx={{ 
+          py: 1, 
+          px: 2,
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          gap: 2,
+          flexShrink: 0,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper'
+        }}>
+          <Typography variant="body2" color="text.secondary" fontSize="0.875rem">
             Showing {orders.length > 0 ? (currentPage - 1) * ordersPerPage + 1 : 0} - {Math.min(currentPage * ordersPerPage, totalOrders)} of {totalOrders} orders
           </Typography>
           <Pagination
@@ -1857,12 +1903,8 @@ function NotesCell({ order, onSave, onNotify }) {
             color="primary"
             showFirstButton
             showLastButton
-            size="large"
+            size="small"
           />
-
-
-        
-
         </Box>
       )}
 
