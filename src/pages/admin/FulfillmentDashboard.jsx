@@ -1946,54 +1946,104 @@ function NotesCell({ order, onSave, onNotify }) {
 {/* 1. Amazon Account */}
 {visibleColumns.includes('amazonAccount') && (
 <TableCell>
-  <AutoSaveSelect
-    value={order.amazonAccount}
-    options={amazonAccounts}
-    onSave={(val) => updateManualField(order._id, 'amazonAccount', val)}
-  />
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <AutoSaveSelect
+      value={order.amazonAccount}
+      options={amazonAccounts}
+      onSave={(val) => updateManualField(order._id, 'amazonAccount', val)}
+    />
+    <IconButton 
+      size="small" 
+      onClick={() => handleCopy(order.amazonAccount || '-')} 
+      aria-label="copy amazon account"
+      sx={{ p: 0.5 }}
+    >
+      <ContentCopyIcon sx={{ fontSize: '0.875rem' }} />
+    </IconButton>
+  </Box>
 </TableCell>
 )}
 
 {/* 2. Arriving Date */}
 {visibleColumns.includes('arriving') && (
 <TableCell>
-  <AutoSaveTextField 
-    
-    value={order.arrivingDate} 
-    onSave={(val) => updateManualField(order._id, 'arrivingDate', val)} 
-  />
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <AutoSaveTextField 
+      value={order.arrivingDate} 
+      onSave={(val) => updateManualField(order._id, 'arrivingDate', val)} 
+    />
+    <IconButton 
+      size="small" 
+      onClick={() => handleCopy(order.arrivingDate || '-')} 
+      aria-label="copy arriving date"
+      sx={{ p: 0.5 }}
+    >
+      <ContentCopyIcon sx={{ fontSize: '0.875rem' }} />
+    </IconButton>
+  </Box>
 </TableCell>
 )}
 
 {/* 3. Before Tax */}
 {visibleColumns.includes('beforeTax') && (
 <TableCell>
-  <AutoSaveTextField 
-    type="number"
-    value={order.beforeTax} 
-    onSave={(val) => updateManualField(order._id, 'beforeTax', val)} 
-  />
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <AutoSaveTextField 
+      type="number"
+      value={order.beforeTax} 
+      onSave={(val) => updateManualField(order._id, 'beforeTax', val)} 
+    />
+    <IconButton 
+      size="small" 
+      onClick={() => handleCopy(order.beforeTax || '-')} 
+      aria-label="copy before tax"
+      sx={{ p: 0.5 }}
+    >
+      <ContentCopyIcon sx={{ fontSize: '0.875rem' }} />
+    </IconButton>
+  </Box>
 </TableCell>
 )}
 
 {/* 4. Estimated Tax */}
 {visibleColumns.includes('estimatedTax') && (
 <TableCell>
-  <AutoSaveTextField 
-    type="number"
-    value={order.estimatedTax} 
-    onSave={(val) => updateManualField(order._id, 'estimatedTax', val)} 
-  />
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <AutoSaveTextField 
+      type="number"
+      value={order.estimatedTax} 
+      onSave={(val) => updateManualField(order._id, 'estimatedTax', val)} 
+    />
+    <IconButton 
+      size="small" 
+      onClick={() => handleCopy(order.estimatedTax || '-')} 
+      aria-label="copy estimated tax"
+      sx={{ p: 0.5 }}
+    >
+      <ContentCopyIcon sx={{ fontSize: '0.875rem' }} />
+    </IconButton>
+  </Box>
 </TableCell>
 )}
 
 {/* 5. Amazon Order ID */}
 {visibleColumns.includes('azOrderId') && (
-<TableCell>
-  <AutoSaveTextField 
-    value={order.azOrderId} 
-    onSave={(val) => updateManualField(order._id, 'azOrderId', val)} 
-  />
+<TableCell sx={{ minWidth: 200 }}>
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <AutoSaveTextField 
+      value={order.azOrderId} 
+      onSave={(val) => updateManualField(order._id, 'azOrderId', val)}
+      sx={{ minWidth: 150 }}
+    />
+    <IconButton 
+      size="small" 
+      onClick={() => handleCopy(order.azOrderId || '-')} 
+      aria-label="copy amazon order id"
+      sx={{ p: 0.5 }}
+    >
+      <ContentCopyIcon sx={{ fontSize: '0.875rem' }} />
+    </IconButton>
+  </Box>
 </TableCell>
 )}
 
@@ -2154,7 +2204,7 @@ function NotesCell({ order, onSave, onNotify }) {
 
 // --- ADD AT BOTTOM OF FILE ---
 
-function AutoSaveTextField({ value, type = 'text', onSave }) {
+function AutoSaveTextField({ value, type = 'text', onSave, sx = {} }) {
   // Format initial value for Date inputs (YYYY-MM-DD)
   const formatVal = (val) => {
     if (type === 'date' && val) return val.split('T')[0];
@@ -2195,7 +2245,8 @@ function AutoSaveTextField({ value, type = 'text', onSave }) {
         borderRadius: 1,
         minWidth: type === 'date' ? 130 : 80,
         '& .MuiOutlinedInput-root': { paddingRight: 0 },
-        '& input': { padding: '6px 8px', fontSize: '0.85rem' }
+        '& input': { padding: '6px 8px', fontSize: '0.85rem' },
+        ...sx // Merge custom sx prop
       }}
     />
   );
