@@ -11,6 +11,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
+import EmailIcon from '@mui/icons-material/Email';
 import CloseIcon from '@mui/icons-material/Close'; 
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SaveIcon from '@mui/icons-material/Save';
@@ -492,8 +493,19 @@ export default function BuyerChatPage() {
                   >
                     <ListItemAvatar>
                       <Badge color="error" badgeContent={thread.unreadCount}>
-                        <Avatar sx={{ bgcolor: thread.messageType === 'ORDER' ? 'primary.main' : 'secondary.main' }}>
-                           {thread.messageType === 'ORDER' ? <ShoppingBagIcon fontSize="small"/> : <QuestionAnswerIcon fontSize="small"/>}
+                        <Avatar sx={{ 
+                          bgcolor: thread.messageType === 'ORDER' 
+                            ? 'primary.main' 
+                            : thread.messageType === 'DIRECT' 
+                              ? 'warning.main' 
+                              : 'secondary.main' 
+                        }}>
+                           {thread.messageType === 'ORDER' 
+                             ? <ShoppingBagIcon fontSize="small"/> 
+                             : thread.messageType === 'DIRECT'
+                               ? <EmailIcon fontSize="small"/>
+                               : <QuestionAnswerIcon fontSize="small"/>
+                           }
                         </Avatar>
                       </Badge>
                     </ListItemAvatar>
@@ -511,7 +523,12 @@ export default function BuyerChatPage() {
                       secondary={
                         <>
                            <Typography variant="caption" display="block" color="text.secondary" noWrap>
-                             {thread.orderId ? `#${thread.orderId}` : 'Inquiry'} • {thread.itemTitle || thread.itemId}
+                             {thread.orderId 
+                               ? `#${thread.orderId}` 
+                               : thread.messageType === 'DIRECT' 
+                                 ? 'Direct Message' 
+                                 : 'Inquiry'
+                             } • {thread.itemId === 'DIRECT_MESSAGE' ? 'No Item' : (thread.itemTitle || thread.itemId)}
                            </Typography>
                            <Typography variant="body2" noWrap sx={{ fontWeight: thread.unreadCount > 0 ? 'bold' : 'normal', color: 'text.primary' }}>
                              {thread.sender === 'SELLER' ? 'You: ' : ''}{thread.lastMessage}
@@ -660,26 +677,49 @@ export default function BuyerChatPage() {
     
     {/* 2. PRODUCT & ORDER */}
     <Box>
-        {/* REPLACING TYPOGRAPHY WITH LINK */}
-        <Link 
-            href={`https://www.ebay.com/itm/${selectedThread.itemId}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            underline="hover"
-            sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}
-        >
+        {/* DIRECT MESSAGE - No item link */}
+        {selectedThread.itemId === 'DIRECT_MESSAGE' ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+            <EmailIcon sx={{ fontSize: 20, color: 'warning.main' }} />
             <Typography 
                 variant="subtitle2" 
                 sx={{ 
-                    color: 'primary.main', 
+                    color: 'warning.main', 
                     fontWeight: 600,
                     lineHeight: 1.3
                 }}
             >
-                 {selectedThread.itemTitle || `Item ID: ${selectedThread.itemId}`}
+                Direct Message (No Item Context)
             </Typography>
-            <OpenInNewIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.3 }} />
-        </Link>
+            <Chip 
+              label="Cannot Reply via API" 
+              size="small" 
+              color="warning" 
+              sx={{ height: 24, fontSize: '0.7rem' }}
+            />
+          </Box>
+        ) : (
+          /* REGULAR ITEM LINK */
+          <Link 
+              href={`https://www.ebay.com/itm/${selectedThread.itemId}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              underline="hover"
+              sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}
+          >
+              <Typography 
+                  variant="subtitle2" 
+                  sx={{ 
+                      color: 'primary.main', 
+                      fontWeight: 600,
+                      lineHeight: 1.3
+                  }}
+              >
+                   {selectedThread.itemTitle || `Item ID: ${selectedThread.itemId}`}
+              </Typography>
+              <OpenInNewIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.3 }} />
+          </Link>
+        )}
 
         {selectedThread.orderId && (
             <Chip 
@@ -767,30 +807,40 @@ export default function BuyerChatPage() {
             </Box>
 
             <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: '#fff', display: 'flex', gap: 1 }}>
-              <TextField
-                fullWidth
-                multiline
-                maxRows={3}
-                placeholder="Type a message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => {
-                    if(e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                    }
-                }}
-                disabled={sending}
-              />
-              <Button 
-                variant="contained" 
-                sx={{ px: 3 }}
-                endIcon={sending ? <CircularProgress size={20} color="inherit"/> : <SendIcon />}
-                onClick={handleSendMessage}
-                disabled={sending || !newMessage.trim()}
-              >
-                Send
-              </Button>
+              {selectedThread.itemId === 'DIRECT_MESSAGE' ? (
+                /* DIRECT MESSAGE - Cannot Reply */
+                <Alert severity="warning" sx={{ width: '100%' }}>
+                  <strong>Direct messages cannot be replied to via API.</strong> These are account-level messages without item context. Please respond through eBay's messaging center directly.
+                </Alert>
+              ) : (
+                /* REGULAR MESSAGE INPUT */
+                <>
+                  <TextField
+                    fullWidth
+                    multiline
+                    maxRows={3}
+                    placeholder="Type a message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => {
+                        if(e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                        }
+                    }}
+                    disabled={sending}
+                  />
+                  <Button 
+                    variant="contained" 
+                    sx={{ px: 3 }}
+                    endIcon={sending ? <CircularProgress size={20} color="inherit"/> : <SendIcon />}
+                    onClick={handleSendMessage}
+                    disabled={sending || !newMessage.trim()}
+                  >
+                    Send
+                  </Button>
+                </>
+              )}
             </Box>
           </>
         ) : (

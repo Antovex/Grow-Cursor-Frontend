@@ -48,6 +48,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import ImageIcon from '@mui/icons-material/Image';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 import PersonIcon from '@mui/icons-material/Person'; // <--- Add this
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'; // <--- Add this
@@ -55,6 +58,135 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew'; // <--- Add this
 
 import api from '../../lib/api';
 
+// --- IMAGE VIEWER DIALOG ---
+function ImageDialog({ open, onClose, images }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (open) {
+      setCurrentIndex(0);
+    }
+  }, [open]);
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h6">
+            Item Images ({currentIndex + 1} of {images.length})
+          </Typography>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+      <DialogContent>
+        {images.length > 0 ? (
+          <Box>
+            {/* Main Image */}
+            <Box 
+              sx={{ 
+                width: '100%', 
+                height: 500, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                bgcolor: 'grey.100',
+                borderRadius: 1,
+                mb: 2
+              }}
+            >
+              <img
+                src={images[currentIndex]}
+                alt={`Item ${currentIndex + 1}`}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain'
+                }}
+              />
+            </Box>
+
+            {/* Navigation Buttons */}
+            {images.length > 1 && (
+              <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
+                <Button 
+                  onClick={handlePrev} 
+                  startIcon={<NavigateBeforeIcon />}
+                  variant="outlined"
+                >
+                  Previous
+                </Button>
+                <Button 
+                  onClick={handleNext} 
+                  endIcon={<NavigateNextIcon />}
+                  variant="outlined"
+                >
+                  Next
+                </Button>
+              </Stack>
+            )}
+
+            {/* Thumbnail Gallery */}
+            {images.length > 1 && (
+              <Stack 
+                direction="row" 
+                spacing={1} 
+                sx={{ 
+                  overflowX: 'auto', 
+                  pb: 1,
+                  justifyContent: 'center',
+                  flexWrap: 'wrap'
+                }}
+              >
+                {images.map((img, idx) => (
+                  <Box
+                    key={idx}
+                    onClick={() => setCurrentIndex(idx)}
+                    sx={{
+                      width: 80,
+                      height: 80,
+                      cursor: 'pointer',
+                      border: idx === currentIndex ? '3px solid' : '1px solid',
+                      borderColor: idx === currentIndex ? 'primary.main' : 'grey.300',
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        opacity: 0.8
+                      }
+                    }}
+                  >
+                    <img
+                      src={img}
+                      alt={`Thumbnail ${idx + 1}`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </Box>
+        ) : (
+          <Alert severity="info">No images available for this item</Alert>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // --- NEW COMPONENT: Chat Dialog (Visual Match with BuyerChatPage) ---
 function ChatDialog({ open, onClose, order }) {
@@ -398,6 +530,15 @@ export default function FulfillmentDashboard() {
   const [copied, setCopied] = useState(false);
   const [copiedText, setCopiedText] = useState('');
 
+  // Image viewer state
+  const [itemImages, setItemImages] = useState({}); // { orderId: [imageUrls] }
+  const [thumbnailImages, setThumbnailImages] = useState({}); // { orderId: imageUrl }
+  const [loadingThumbnails, setLoadingThumbnails] = useState({}); // { orderId: boolean }
+  const [loadingImages, setLoadingImages] = useState({}); // { orderId: boolean }
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [imageCount, setImageCount] = useState(0); // Total image count
+
   // Session storage key for persisting state
   const STORAGE_KEY = 'fulfillment_dashboard_state';
 
@@ -727,6 +868,81 @@ const updateManualField = async (orderId, field, value) => {
   }
 
 
+
+  // Function to fetch ONLY thumbnail (first image) for display
+  const fetchThumbnail = async (order) => {
+    const orderId = order._id;
+    const itemId = order.itemNumber || order.lineItems?.[0]?.legacyItemId;
+    const sellerId = order.seller?._id || order.seller;
+
+    if (!itemId || !sellerId || thumbnailImages[orderId]) {
+      return; // Skip if no item ID, no seller, or already loaded
+    }
+
+    setLoadingThumbnails(prev => ({ ...prev, [orderId]: true }));
+
+    try {
+      const { data } = await api.get(`/ebay/item-images/${itemId}?sellerId=${sellerId}&thumbnail=true`);
+      if (data.images && data.images.length > 0) {
+        setThumbnailImages(prev => ({ ...prev, [orderId]: data.images[0] }));
+        // Store the total count so we know if there are more images
+        if (data.total > 1) {
+          setItemImages(prev => ({ ...prev, [orderId]: { count: data.total } }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching thumbnail:', error);
+    } finally {
+      setLoadingThumbnails(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  // Function to fetch ALL images when user clicks (only called on demand)
+  const fetchAllImages = async (order) => {
+    const orderId = order._id;
+    const itemId = order.itemNumber || order.lineItems?.[0]?.legacyItemId;
+    const sellerId = order.seller?._id || order.seller;
+
+    // If we already have all images, just use them
+    if (itemImages[orderId]?.images) {
+      return itemImages[orderId].images;
+    }
+
+    setLoadingImages(prev => ({ ...prev, [orderId]: true }));
+
+    try {
+      const { data } = await api.get(`/ebay/item-images/${itemId}?sellerId=${sellerId}`);
+      const allImages = data.images || [];
+      setItemImages(prev => ({ ...prev, [orderId]: { images: allImages, count: allImages.length } }));
+      return allImages;
+    } catch (error) {
+      console.error('Error fetching all images:', error);
+      return [];
+    } finally {
+      setLoadingImages(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  // Fetch thumbnails for visible orders when they load
+  useEffect(() => {
+    if (orders.length > 0) {
+      orders.forEach(order => {
+        fetchThumbnail(order);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders]);
+
+  // Function to open image viewer (fetches all images on demand)
+  const handleViewImages = async (order) => {
+    const allImages = await fetchAllImages(order);
+    
+    if (allImages.length > 0) {
+      setSelectedImages(allImages);
+      setImageCount(allImages.length);
+      setImageDialogOpen(true);
+    }
+  };
 
   const handleOpenMessageDialog = (order) => {
     setSelectedOrderForMessage(order);
@@ -1653,6 +1869,73 @@ function NotesCell({ order, onSave, onNotify }) {
                                 }}
                               />
 
+                              {/* 1.5 THUMBNAIL IMAGE (if available, only for first item) */}
+                              {i === 0 && thumbnailImages[order._id] && (
+                                <Box
+                                  onClick={() => handleViewImages(order)}
+                                  sx={{
+                                    width: 50,
+                                    height: 50,
+                                    cursor: 'pointer',
+                                    border: '1px solid',
+                                    borderColor: 'grey.300',
+                                    borderRadius: 1,
+                                    overflow: 'hidden',
+                                    flexShrink: 0,
+                                    position: 'relative',
+                                    '&:hover': {
+                                      borderColor: 'primary.main',
+                                      boxShadow: 2
+                                    }
+                                  }}
+                                >
+                                  <img
+                                    src={thumbnailImages[order._id]}
+                                    alt="Product"
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover'
+                                    }}
+                                  />
+                                  {/* Show badge if there are more images */}
+                                  {itemImages[order._id]?.count > 1 && (
+                                    <Chip
+                                      label={`+${itemImages[order._id].count - 1}`}
+                                      size="small"
+                                      sx={{
+                                        position: 'absolute',
+                                        bottom: 2,
+                                        right: 2,
+                                        height: 18,
+                                        fontSize: '0.65rem',
+                                        bgcolor: 'rgba(0,0,0,0.7)',
+                                        color: 'white',
+                                        '& .MuiChip-label': { px: 0.5 }
+                                      }}
+                                    />
+                                  )}
+                                  {/* Loading overlay */}
+                                  {loadingImages[order._id] && (
+                                    <Box
+                                      sx={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        bgcolor: 'rgba(255,255,255,0.8)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}
+                                    >
+                                      <CircularProgress size={20} />
+                                    </Box>
+                                  )}
+                                </Box>
+                              )}
+
                               {/* 2. PRODUCT TITLE & ID */}
                               <Box sx={{ flex: 1, overflow: 'hidden' }}>
                                 <Tooltip title={item.title} arrow placement="top">
@@ -1670,23 +1953,25 @@ function NotesCell({ order, onSave, onNotify }) {
                                     {item.title}
                                   </Typography>
                                 </Tooltip>
-                                <Link 
-                                  href={`https://www.ebay.com/itm/${item.legacyItemId}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  underline="hover"
-                                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.3 }}
-                                >
-                                  <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
-                                    ID: {item.legacyItemId}
-                                  </Typography>
-                                  <OpenInNewIcon sx={{ fontSize: 12, color: 'primary.main' }} />
-                                </Link>
-                                {item.sku && (
-                                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', ml: 0.5 }}>
-                                    | SKU: {item.sku}
-                                  </Typography>
-                                )}
+                                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.5 }}>
+                                  <Link 
+                                    href={`https://www.ebay.com/itm/${item.legacyItemId}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    underline="hover"
+                                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.3 }}
+                                  >
+                                    <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                                      ID: {item.legacyItemId}
+                                    </Typography>
+                                    <OpenInNewIcon sx={{ fontSize: 12, color: 'primary.main' }} />
+                                  </Link>
+                                  {item.sku && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                      | SKU: {item.sku}
+                                    </Typography>
+                                  )}
+                                </Stack>
                               </Box>
 
                               {/* 3. COPY BUTTON */}
@@ -2126,6 +2411,13 @@ function NotesCell({ order, onSave, onNotify }) {
         open={messageModalOpen} 
         onClose={handleCloseMessageDialog} 
         order={selectedOrderForMessage} 
+      />
+
+      {/* Image Viewer Dialog */}
+      <ImageDialog
+        open={imageDialogOpen}
+        onClose={() => setImageDialogOpen(false)}
+        images={selectedImages}
       />
 
       {/* Snackbar for polling results */}
