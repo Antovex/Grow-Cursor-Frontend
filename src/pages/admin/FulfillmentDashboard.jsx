@@ -1670,9 +1670,23 @@ function NotesCell({ order, onSave, onNotify }) {
                                     {item.title}
                                   </Typography>
                                 </Tooltip>
-                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                                  ID: {item.legacyItemId} {item.sku ? `| SKU: ${item.sku}` : ''}
-                                </Typography>
+                                <Link 
+                                  href={`https://www.ebay.com/itm/${item.legacyItemId}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  underline="hover"
+                                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.3 }}
+                                >
+                                  <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                                    ID: {item.legacyItemId}
+                                  </Typography>
+                                  <OpenInNewIcon sx={{ fontSize: 12, color: 'primary.main' }} />
+                                </Link>
+                                {item.sku && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', ml: 0.5 }}>
+                                    | SKU: {item.sku}
+                                  </Typography>
+                                )}
                               </Box>
 
                               {/* 3. COPY BUTTON */}

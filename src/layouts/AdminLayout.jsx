@@ -74,6 +74,8 @@ import ConversationManagementPage from '../pages/admin/ConversationManagementPag
 import ManageAmazonAccountsPage from '../pages/admin/ManageAmazonAccountsPage.jsx';
 import IdeasPage from '../pages/IdeasPage.jsx';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import OrderAnalyticsPage from '../pages/admin/OrderAnalyticsPage.jsx';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 const drawerWidth = 230;
 
@@ -238,6 +240,9 @@ export default function AdminLayout({ user, onLogout }) {
             </ListItem>
             <Collapse in={ordersMenuOpen} timeout="auto" unmountOnExit>
               <List component="div" disablePadding sx={{ pl: 4 }}>
+                <ListItemButton component={Link} to="/admin/order-analytics" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Order Analytics" />
+                </ListItemButton>
                 <ListItemButton component={Link} to="/admin/fulfillment" onClick={() => setMobileOpen(false)}>
                   <ListItemText primary="All Orders" />
                 </ListItemButton>
@@ -468,6 +473,7 @@ export default function AdminLayout({ user, onLogout }) {
           {/* UPDATED ROUTES FOR ORDERS DEPT */}
           {(isFulfillmentAdmin || isSuper || isHOC || isComplianceManager) && (
             <>
+              <Route path="/order-analytics" element={<OrderAnalyticsPage />} />
               <Route path="/fulfillment" element={<FulfillmentDashboard />} />
               <Route path="/awaiting-shipment" element={<AwaitingShipmentPage />} />
               <Route path="/fulfillment-notes" element={<FulfillmentNotesPage />} />
