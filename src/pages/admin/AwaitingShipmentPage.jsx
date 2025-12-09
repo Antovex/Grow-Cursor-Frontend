@@ -36,19 +36,48 @@ import api from '../../lib/api';
 
 // ... (Rest of the file remains unchanged until ManualTrackingCell)
 
+// Helper to get unique item IDs from order
+function getUniqueItemIds(order) {
+  if (!order.lineItems || order.lineItems.length === 0) return [];
+  const uniqueIds = [...new Set(order.lineItems.map(item => item.legacyItemId).filter(Boolean))];
+  return uniqueIds;
+}
+
+// Helper to check if order has multiple different items
+function hasMultipleItems(order) {
+  const uniqueIds = getUniqueItemIds(order);
+  return uniqueIds.length > 1;
+}
+
 function ManualTrackingCell({ order, onSaved, onCopy, onNotify }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [value, setValue] = useState(order.manualTrackingNumber || '');
   const [carrier, setCarrier] = useState('USPS');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [uploadMode, setUploadMode] = useState('bulk'); // 'bulk' or 'individual'
+  const [individualTracking, setIndividualTracking] = useState({}); // { itemId: { trackingNumber, carrier } }
+  
+  const uniqueItemIds = getUniqueItemIds(order);
+  const multipleItems = uniqueItemIds.length > 1;
 
   // Sync state when order changes, but only if not currently editing
   useEffect(() => {
     if (!anchorEl) {
       setValue(order.manualTrackingNumber || '');
+      // Initialize individual tracking for each item with carrier
+      if (multipleItems) {
+        const tracking = {};
+        uniqueItemIds.forEach(itemId => {
+          tracking[itemId] = {
+            trackingNumber: order.manualTrackingNumber || '',
+            carrier: 'USPS'
+          };
+        });
+        setIndividualTracking(tracking);
+      }
     }
-  }, [order.manualTrackingNumber, anchorEl]);
+  }, [order.manualTrackingNumber, anchorEl, multipleItems, uniqueItemIds]);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -61,34 +90,71 @@ function ManualTrackingCell({ order, onSaved, onCopy, onNotify }) {
     // Reset value on close if not saved
     setValue(order.manualTrackingNumber || '');
     setCarrier('USPS');
+    setUploadMode('bulk');
+    setIndividualTracking({});
   };
 
   const open = Boolean(anchorEl);
   const id = open ? `manual-tracking-popover-${order._id}` : undefined;
 
   const save = async () => {
-    if (!value.trim()) {
-      setError('Tracking number is required');
-      return;
+    // Validate based on upload mode
+    if (uploadMode === 'bulk') {
+      if (!value.trim()) {
+        setError('Tracking number is required');
+        return;
+      }
+    } else {
+      // Check if all individual tracking numbers are filled
+      const allFilled = uniqueItemIds.every(itemId => {
+        const tracking = individualTracking[itemId];
+        return tracking?.trackingNumber?.trim();
+      });
+      if (!allFilled) {
+        setError('Please provide tracking for all items');
+        return;
+      }
     }
 
     setSaving(true);
     setError('');
 
     try {
-      // Upload tracking to eBay (this will also update the database)
-      const { data } = await api.post(`/ebay/orders/${order._id}/upload-tracking`, {
-        trackingNumber: value.trim(),
-        shippingCarrier: carrier
-      });
+      if (uploadMode === 'bulk' || !multipleItems) {
+        // Upload single tracking for all items
+        const { data } = await api.post(`/ebay/orders/${order._id}/upload-tracking`, {
+          trackingNumber: value.trim(),
+          shippingCarrier: carrier
+        });
 
-      if (data?.success) {
-        onSaved(value.trim());
-        handleClose();
-        onNotify?.('success', `✅ Tracking uploaded via ${carrier}!`);
+        if (data?.success) {
+          onSaved(value.trim());
+          handleClose();
+          onNotify?.('success', `✅ Tracking uploaded via ${carrier}!`);
+        } else {
+          setError('Failed to upload');
+          onNotify?.('error', 'Failed to upload tracking to eBay');
+        }
       } else {
-        setError('Failed to upload');
-        onNotify?.('error', 'Failed to upload tracking to eBay');
+        // Upload individual tracking for each item with their own carriers
+        const trackingData = uniqueItemIds.map(itemId => ({
+          itemId,
+          trackingNumber: individualTracking[itemId].trackingNumber,
+          carrier: individualTracking[itemId].carrier
+        }));
+
+        const { data } = await api.post(`/ebay/orders/${order._id}/upload-tracking-multiple`, {
+          trackingData
+        });
+
+        if (data?.success) {
+          onSaved(individualTracking[uniqueItemIds[0]].trackingNumber); // Save first one for display
+          handleClose();
+          onNotify?.('success', `✅ ${uniqueItemIds.length} tracking numbers uploaded!`);
+        } else {
+          setError('Failed to upload');
+          onNotify?.('error', 'Failed to upload tracking to eBay');
+        }
       }
     } catch (e) {
       const errorMsg = e?.response?.data?.error || 'Upload failed';
@@ -151,40 +217,125 @@ function ManualTrackingCell({ order, onSaved, onCopy, onNotify }) {
           horizontal: 'left',
         }}
         PaperProps={{
-          sx: { p: 2, width: 320, mt: 1 }
+          sx: { p: 2, width: multipleItems && uploadMode === 'individual' ? 550 : 320, mt: 1 }
         }}
       >
         <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
           Upload Tracking to eBay
         </Typography>
 
-        <Stack spacing={2}>
-          <TextField
-            label="Tracking Number"
-            variant="outlined"
-            size="small"
-            fullWidth
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            autoFocus
-            placeholder="e.g. 9400..."
-          />
+        {/* Show upload mode selector if multiple different items */}
+        {multipleItems && (
+          <Box sx={{ mb: 2, p: 1.5, bgcolor: 'info.lighter', borderRadius: 1, border: '1px solid', borderColor: 'info.main' }}>
+            <Typography variant="caption" color="info.main" sx={{ fontWeight: 600, display: 'block', mb: 1 }}>
+              This order has {uniqueItemIds.length} different items
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                variant={uploadMode === 'bulk' ? 'contained' : 'outlined'}
+                onClick={() => setUploadMode('bulk')}
+                sx={{ flex: 1, textTransform: 'none' }}
+              >
+                Same for All
+              </Button>
+              <Button
+                size="small"
+                variant={uploadMode === 'individual' ? 'contained' : 'outlined'}
+                onClick={() => setUploadMode('individual')}
+                sx={{ flex: 1, textTransform: 'none' }}
+              >
+                Separate Tracking
+              </Button>
+            </Stack>
+          </Box>
+        )}
 
-          <FormControl size="small" fullWidth>
-            <InputLabel>Carrier</InputLabel>
-            <Select
-              value={carrier}
-              label="Carrier"
-              onChange={(e) => setCarrier(e.target.value)}
-            >
-              <MenuItem value="USPS">USPS</MenuItem>
-              <MenuItem value="UPS">UPS</MenuItem>
-              <MenuItem value="FEDEX">FedEx</MenuItem>
-              <MenuItem value="DHL">DHL</MenuItem>
-              <MenuItem value="AUSTRALIA_POST">Australia Post</MenuItem>
-              <MenuItem value="OTHER">Other</MenuItem>
-            </Select>
-          </FormControl>
+        <Stack spacing={2}>
+          {uploadMode === 'bulk' || !multipleItems ? (
+            // Single tracking number for all items
+            <TextField
+              label="Tracking Number"
+              variant="outlined"
+              size="small"
+              fullWidth
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              autoFocus
+              placeholder="e.g. 9400..."
+            />
+          ) : (
+            // Individual tracking for each item
+            <Stack spacing={1.5}>
+              {uniqueItemIds.map((itemId, idx) => {
+                const item = order.lineItems.find(li => li.legacyItemId === itemId);
+                return (
+                  <Box key={itemId}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
+                      Item {idx + 1}: {item?.title?.substring(0, 40)}...
+                    </Typography>
+                    <Stack direction="row" spacing={1}>
+                      <TextField
+                        label={`Tracking #${idx + 1}`}
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        value={individualTracking[itemId]?.trackingNumber || ''}
+                        onChange={(e) => setIndividualTracking(prev => ({
+                          ...prev,
+                          [itemId]: {
+                            ...prev[itemId],
+                            trackingNumber: e.target.value
+                          }
+                        }))}
+                        placeholder="e.g. 9400..."
+                      />
+                      <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <InputLabel>Carrier</InputLabel>
+                        <Select
+                          value={individualTracking[itemId]?.carrier || 'USPS'}
+                          label="Carrier"
+                          onChange={(e) => setIndividualTracking(prev => ({
+                            ...prev,
+                            [itemId]: {
+                              ...prev[itemId],
+                              carrier: e.target.value
+                            }
+                          }))}
+                        >
+                          <MenuItem value="USPS">USPS</MenuItem>
+                          <MenuItem value="UPS">UPS</MenuItem>
+                          <MenuItem value="FEDEX">FedEx</MenuItem>
+                          <MenuItem value="DHL">DHL</MenuItem>
+                          <MenuItem value="AUSTRALIA_POST">AU Post</MenuItem>
+                          <MenuItem value="OTHER">Other</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Stack>
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
+
+          {/* Only show global carrier selector in bulk mode */}
+          {(uploadMode === 'bulk' || !multipleItems) && (
+            <FormControl size="small" fullWidth>
+              <InputLabel>Carrier</InputLabel>
+              <Select
+                value={carrier}
+                label="Carrier"
+                onChange={(e) => setCarrier(e.target.value)}
+              >
+                <MenuItem value="USPS">USPS</MenuItem>
+                <MenuItem value="UPS">UPS</MenuItem>
+                <MenuItem value="FEDEX">FedEx</MenuItem>
+                <MenuItem value="DHL">DHL</MenuItem>
+                <MenuItem value="AUSTRALIA_POST">Australia Post</MenuItem>
+                <MenuItem value="OTHER">Other</MenuItem>
+              </Select>
+            </FormControl>
+          )}
 
           {error && (
             <Alert severity="error" sx={{ fontSize: '0.75rem', py: 0 }}>
@@ -571,15 +722,64 @@ export default function AwaitingShipmentPage() {
                     <TableCell>
                       {formatDate(order.shipByDate || order.lineItems?.[0]?.lineItemFulfillmentInstructions?.shipByDate, order.purchaseMarketplaceId)}
                     </TableCell>
-                    <TableCell>
-                      <Tooltip title={order.productName || order.lineItems?.[0]?.title || '-'} arrow>
-                        <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
-                          {order.productName || order.lineItems?.[0]?.title || '-'}
-                        </Typography>
-                      </Tooltip>
-                      <IconButton size="small" onClick={() => handleCopy(order.productName || order.lineItems?.[0]?.title || '-')} aria-label="copy product name">
-                        <ContentCopyIcon fontSize="small" />
-                      </IconButton>
+                    <TableCell sx={{ minWidth: 250, maxWidth: 350 }}>
+                      <Stack spacing={0.5}>
+                        {order.lineItems && order.lineItems.length > 0 ? (
+                          order.lineItems.map((item, i) => (
+                            <Box 
+                              key={i}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                borderBottom: i < order.lineItems.length - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
+                                pb: i < order.lineItems.length - 1 ? 0.5 : 0
+                              }}
+                            >
+                              {/* Quantity Badge */}
+                              <Chip
+                                label={`x${item.quantity}`}
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  minWidth: 30,
+                                  fontWeight: 'bold',
+                                  fontSize: '0.7rem',
+                                  backgroundColor: item.quantity > 1 ? '#ed6c02' : '#e0e0e0',
+                                  color: item.quantity > 1 ? '#fff' : 'rgba(0,0,0,0.87)'
+                                }}
+                              />
+                              
+                              {/* Product Title */}
+                              <Tooltip title={item.title || '-'} arrow>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    flex: 1,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  {item.title || '-'}
+                                </Typography>
+                              </Tooltip>
+                              
+                              {/* Copy Button */}
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleCopy(item.title || '-')}
+                                sx={{ p: 0.5 }}
+                              >
+                                <ContentCopyIcon fontSize="small" sx={{ fontSize: 14 }} />
+                              </IconButton>
+                            </Box>
+                          ))
+                        ) : (
+                          <Typography variant="body2">-</Typography>
+                        )}
+                      </Stack>
                     </TableCell>
                     <TableCell>
                       <Tooltip title={order.buyer?.buyerRegistrationAddress?.fullName || '-'} arrow>
