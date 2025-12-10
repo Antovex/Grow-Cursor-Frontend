@@ -72,6 +72,7 @@ import CompatibilityDashboard from '../pages/compatibility/CompatibilityDashboar
 
 import ConversationManagementPage from '../pages/admin/ConversationManagementPage.jsx';
 import ManageAmazonAccountsPage from '../pages/admin/ManageAmazonAccountsPage.jsx';
+import ManageCreditCardsPage from '../pages/admin/ManageCreditCardsPage.jsx';
 import IdeasPage from '../pages/IdeasPage.jsx';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import OrderAnalyticsPage from '../pages/admin/OrderAnalyticsPage.jsx';
@@ -270,8 +271,11 @@ export default function AdminLayout({ user, onLogout }) {
                   <ListItemText primary="Conversation Mgmt" />
                 </ListItemButton>
                 <ListItemButton component={Link} to="/admin/amazon-accounts" onClick={() => setMobileOpen(false)}>
-    <ListItemText primary="Manage Amazon Accts" />
-  </ListItemButton>
+                  <ListItemText primary="Manage Amazon Accts" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/admin/credit-cards" onClick={() => setMobileOpen(false)}>
+                  <ListItemText primary="Manage Credit Cards" />
+                </ListItemButton>
               </List>
             </Collapse>
           </>
@@ -484,6 +488,7 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/message-received" element={<BuyerChatPage/>} />
               <Route path="/conversation-management" element={<ConversationManagementPage />} />
               <Route path="/amazon-accounts" element={<ManageAmazonAccountsPage />} />
+              <Route path="/credit-cards" element={<ManageCreditCardsPage />} />
             </>
           )}
           

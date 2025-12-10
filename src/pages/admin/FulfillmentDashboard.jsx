@@ -601,6 +601,7 @@ export default function FulfillmentDashboard() {
 const [searchEndDate, setSearchEndDate] = useState('');
 
  const [amazonAccounts, setAmazonAccounts] = useState([]);
+  const [creditCards, setCreditCards] = useState([]);
   
   // Column visibility state - persisted in sessionStorage
   const DEFAULT_VISIBLE_COLUMNS = [
@@ -609,7 +610,7 @@ const [searchEndDate, setSearchEndDate] = useState('');
     'shipping', 'salesTax', 'discount', 'transactionFees', 
     'adFeeGeneral', 'cancelStatus', 'refunds', 'trackingNumber',
     'amazonAccount', 'arriving', 'beforeTax', 'estimatedTax',
-    'azOrderId', 'notes', 'messagingStatus'
+    'azOrderId', 'amazonRefund', 'cardName', 'notes', 'messagingStatus'
   ];
   
   const ALL_COLUMNS = [
@@ -635,6 +636,8 @@ const [searchEndDate, setSearchEndDate] = useState('');
     { id: 'beforeTax', label: 'Before Tax' },
     { id: 'estimatedTax', label: 'Estimated Tax' },
     { id: 'azOrderId', label: 'Az OrderID' },
+    { id: 'amazonRefund', label: 'Amazon Refund' },
+    { id: 'cardName', label: 'Card Name' },
     { id: 'notes', label: 'Notes' },
     { id: 'messagingStatus', label: 'Messaging' }
   ];
@@ -710,6 +713,7 @@ const updateManualField = async (orderId, field, value) => {
   useEffect(() => {
     if (!hasFetchedInitialData.current) {
       api.get('/amazon-accounts').then(({ data }) => setAmazonAccounts(data || [])).catch(console.error);
+      api.get('/credit-cards').then(({ data }) => setCreditCards(data || [])).catch(console.error);
     }
   }, []);
 
@@ -1804,6 +1808,8 @@ function NotesCell({ order, onSave, onNotify }) {
                 {visibleColumns.includes('beforeTax') && <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Before Tax</TableCell>}
                 {visibleColumns.includes('estimatedTax') && <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Estimated Tax</TableCell>}
                 {visibleColumns.includes('azOrderId') && <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Az OrderID</TableCell>}
+                {visibleColumns.includes('amazonRefund') && <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Amazon Refund</TableCell>}
+                {visibleColumns.includes('cardName') && <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Card Name</TableCell>}
                 {visibleColumns.includes('notes') && <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Notes</TableCell>}
                 {visibleColumns.includes('messagingStatus') && <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Messaging</TableCell>}
                 <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100, textAlign: 'center' }}></TableCell>
@@ -2338,6 +2344,49 @@ function NotesCell({ order, onSave, onNotify }) {
       size="small" 
       onClick={() => handleCopy(order.azOrderId || '-')} 
       aria-label="copy amazon order id"
+      sx={{ p: 0.5 }}
+    >
+      <ContentCopyIcon sx={{ fontSize: '0.875rem' }} />
+    </IconButton>
+  </Box>
+</TableCell>
+)}
+
+{/* 6. Amazon Refund */}
+{visibleColumns.includes('amazonRefund') && (
+<TableCell sx={{ minWidth: 150 }}>
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <AutoSaveTextField 
+      value={order.amazonRefund} 
+      type="number"
+      onSave={(val) => updateManualField(order._id, 'amazonRefund', val)}
+      sx={{ minWidth: 100 }}
+    />
+    <IconButton 
+      size="small" 
+      onClick={() => handleCopy(order.amazonRefund || '-')} 
+      aria-label="copy amazon refund"
+      sx={{ p: 0.5 }}
+    >
+      <ContentCopyIcon sx={{ fontSize: '0.875rem' }} />
+    </IconButton>
+  </Box>
+</TableCell>
+)}
+
+{/* 7. Card Name */}
+{visibleColumns.includes('cardName') && (
+<TableCell sx={{ minWidth: 200 }}>
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <AutoSaveSelect 
+      value={order.cardName || ''} 
+      options={creditCards}
+      onSave={(val) => updateManualField(order._id, 'cardName', val)}
+    />
+    <IconButton 
+      size="small" 
+      onClick={() => handleCopy(order.cardName || '-')} 
+      aria-label="copy card name"
       sx={{ p: 0.5 }}
     >
       <ContentCopyIcon sx={{ fontSize: '0.875rem' }} />
