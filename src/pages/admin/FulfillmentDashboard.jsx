@@ -602,6 +602,7 @@ const [searchEndDate, setSearchEndDate] = useState('');
 
  const [amazonAccounts, setAmazonAccounts] = useState([]);
   const [creditCards, setCreditCards] = useState([]);
+  const [selectedRowId, setSelectedRowId] = useState(null);
   
   // Column visibility state - persisted in sessionStorage
   const DEFAULT_VISIBLE_COLUMNS = [
@@ -1817,12 +1818,23 @@ function NotesCell({ order, onSave, onNotify }) {
             </TableHead>
             <TableBody>
               {orders.map((order, idx) => {
+                const isSelected = selectedRowId === order._id;
                 return (
                   <TableRow
                     key={order._id || idx}
+                    onClick={() => setSelectedRowId(isSelected ? null : order._id)}
                     sx={{
+                      cursor: 'pointer',
                       '&:nth-of-type(odd)': { backgroundColor: 'action.hover' },
                       '&:hover': { backgroundColor: 'action.selected' },
+                      ...(isSelected && {
+                        outline: '3px solid',
+                        outlineColor: 'primary.main',
+                        outlineOffset: '-3px',
+                        backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                        position: 'relative',
+                        zIndex: 1,
+                      }),
                     }}
                   >
                     <TableCell>{(currentPage - 1) * ordersPerPage + idx + 1}</TableCell>
