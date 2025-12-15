@@ -413,6 +413,9 @@ export default function AdminLayout({ user, onLogout }) {
             {sidebarOpen ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>Admin Dashboard</Typography>
+          <Button color="inherit" startIcon={<ChatIcon />} onClick={() => navigate('/admin/internal-messages')} sx={{ mr: 1 }}>
+            Team Chat
+          </Button>
           <Typography variant="body2" sx={{ mr: 2 }}>{user?.username} ({user?.role})</Typography>
           <Button color="inherit" onClick={onLogout}>Logout</Button>
         </Toolbar>
