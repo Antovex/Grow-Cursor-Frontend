@@ -196,7 +196,12 @@ export default function CompatibilityDashboard() {
                 { name: 'Model', value: modelVal }
             ]
         });
-        setYearOptions(data.values.sort((a, b) => b - a));
+        // Normalize year values to strings for consistent Select behavior
+        setYearOptions(
+          (data.values || [])
+            .map((y) => String(y))
+            .sort((a, b) => Number(b) - Number(a))
+        );
     } catch (e) { console.error(e); } 
     finally { setLoadingYears(false); }
   };
@@ -226,6 +231,14 @@ export default function CompatibilityDashboard() {
     setEditCompatList([...newEntries, ...editCompatList]);
     setSelectedYears([]); 
     setNewNotes('');
+  };
+
+  // Toggle a single year selection reliably when clicking its checkbox
+  const toggleYear = (year) => {
+    const y = String(year);
+    setSelectedYears((prev) =>
+      prev.includes(y) ? prev.filter((v) => v !== y) : [...prev, y]
+    );
   };
 
   const handleRemoveVehicle = (index) => {
@@ -267,6 +280,13 @@ export default function CompatibilityDashboard() {
 
   const showSnackbar = (message, severity) => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  // Select All years toggle
+  const toggleSelectAllYears = () => {
+    setSelectedYears((prev) => (
+      prev.length === yearOptions.length ? [] : [...yearOptions]
+    ));
   };
 
   return (
@@ -437,7 +457,21 @@ export default function CompatibilityDashboard() {
                     <Select
                         multiple
                         value={selectedYears}
-                        onChange={(e) => setSelectedYears(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const valuesArray = Array.isArray(value)
+                            ? value
+                            : (typeof value === 'string' ? value.split(',') : []);
+                          if (valuesArray.includes('SELECT_ALL')) {
+                            // Toggle select all
+                            setSelectedYears(
+                              selectedYears.length === yearOptions.length ? [] : [...yearOptions]
+                            );
+                          } else {
+                            // Regular selection
+                            setSelectedYears(valuesArray);
+                          }
+                        }}
                         input={<OutlinedInput label="Years" />}
                         renderValue={(selected) => {
                           if (selected.length === 0) return '';
@@ -449,14 +483,12 @@ export default function CompatibilityDashboard() {
                     >
                         {loadingYears ? <MenuItem disabled>Loading...</MenuItem> : (
                           <>
-                            <MenuItem 
-                              value="SELECT_ALL" 
-                              onClick={() => {
-                                if (selectedYears.length === yearOptions.length) {
-                                  setSelectedYears([]);
-                                } else {
-                                  setSelectedYears([...yearOptions]);
-                                }
+                            <MenuItem
+                              value="SELECT_ALL"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleSelectAllYears();
                               }}
                             >
                               <Checkbox 
@@ -467,12 +499,21 @@ export default function CompatibilityDashboard() {
                               <ListItemText primary="Select All" sx={{ fontWeight: 'bold' }} />
                             </MenuItem>
                             <Divider />
-                            {yearOptions.map((year) => (
-                              <MenuItem key={year} value={year}>
-                                <Checkbox checked={selectedYears.indexOf(year) > -1} size="small" />
-                                <ListItemText primary={year} />
-                              </MenuItem>
-                            ))}
+                             {yearOptions.map((year) => (
+                               <MenuItem
+                                 key={year}
+                                 value={year}
+                                 onClick={(e) => {
+                                   // Prevent default Select onChange from conflicting
+                                   e.preventDefault();
+                                   e.stopPropagation();
+                                   toggleYear(year);
+                                 }}
+                               >
+                                 <Checkbox checked={selectedYears.includes(year)} size="small" />
+                                 <ListItemText primary={year} />
+                               </MenuItem>
+                             ))}
                           </>
                         )}
                     </Select>
