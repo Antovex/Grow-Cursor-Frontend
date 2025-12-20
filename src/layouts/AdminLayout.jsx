@@ -47,6 +47,8 @@ import StockLedgerPage from '../pages/admin/StockLedgerPage.jsx';
 import StoreWiseTaskListPage from '../pages/admin/StoreWiseTaskListPage.jsx';
 import StoreTaskDetailPage from '../pages/admin/StoreTaskDetailPage.jsx';
 import StoreDailyTasksPage from '../pages/admin/StoreDailyTasksPage.jsx';
+import ListerInfoPage from '../pages/admin/ListerInfoPage.jsx';
+import ListerInfoDetailPage from '../pages/admin/ListerInfoDetailPage.jsx';
 import AdminTaskList from '../pages/compatibility/AdminTaskList.jsx';
 import EditorDashboard from '../pages/compatibility/EditorDashboard.jsx';
 import ProgressTrackingPage from '../pages/compatibility/ProgressTrackingPage.jsx';
@@ -212,6 +214,9 @@ export default function AdminLayout({ user, onLogout }) {
                     </ListItemButton>
                     <ListItemButton component={Link} to="/admin/store-daily-tasks" onClick={() => setMobileOpen(false)}>
                       <ListItemText primary="Store Daily Tasks" />
+                    </ListItemButton>
+                    <ListItemButton component={Link} to="/admin/lister-info" onClick={() => setMobileOpen(false)}>
+                      <ListItemText primary="Lister Info" />
                     </ListItemButton>
                     <ListItemButton component={Link} to="/admin/range-analyzer" onClick={() => setMobileOpen(false)}>
                       <ListItemText primary="Range Analyzer" />
@@ -465,6 +470,8 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/store-wise-tasks" element={<StoreWiseTaskListPage />} />
               <Route path="/store-wise-tasks/details" element={<StoreTaskDetailPage />} />
               <Route path="/store-daily-tasks" element={<StoreDailyTasksPage />} />
+              <Route path="/lister-info" element={<ListerInfoPage />} />
+              <Route path="/lister-info/details" element={<ListerInfoDetailPage />} />
               <Route path="/range-analyzer" element={<RangeAnalyzerPage />} />
             </>
           ) : null}
