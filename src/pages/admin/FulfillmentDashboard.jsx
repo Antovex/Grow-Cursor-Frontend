@@ -1683,7 +1683,6 @@ export default function FulfillmentDashboard() {
           <Stack direction="row" alignItems="center" spacing={1}>
             {totalOrders > 0 && (
               <Chip
-                icon={<ShoppingCartIcon />}
                 label={`${totalOrders} total orders`}
                 color="primary"
                 variant="filled"
@@ -2395,33 +2394,33 @@ export default function FulfillmentDashboard() {
                       order.orderPaymentStatus !== 'PARTIALLY_REFUNDED' ? (
                         <TableCell align="right">
                           <Typography variant="body2" fontWeight="medium">
-                            {formatCurrency(order.subtotal)}
+                            {formatCurrency(order.subtotalUSD)}
                           </Typography>
                         </TableCell>
                       ) : <TableCell align="center"><Typography variant="body2" color="text.disabled">-</Typography></TableCell>
                     )}
                     {visibleColumns.includes('shipping') && (
                       order.orderPaymentStatus !== 'PARTIALLY_REFUNDED' ? (
-                        <TableCell align="right">{formatCurrency(order.shipping)}</TableCell>
+                        <TableCell align="right">{formatCurrency(order.shippingUSD)}</TableCell>
                       ) : <TableCell align="center"><Typography variant="body2" color="text.disabled">-</Typography></TableCell>
                     )}
                     {visibleColumns.includes('salesTax') && (
                       order.orderPaymentStatus !== 'PARTIALLY_REFUNDED' ? (
-                        <TableCell align="right">{formatCurrency(order.salesTax)}</TableCell>
+                        <TableCell align="right">{formatCurrency(order.salesTaxUSD)}</TableCell>
                       ) : <TableCell align="center"><Typography variant="body2" color="text.disabled">-</Typography></TableCell>
                     )}
                     {visibleColumns.includes('discount') && (
                       order.orderPaymentStatus !== 'PARTIALLY_REFUNDED' ? (
                         <TableCell align="right">
                           <Typography variant="body2">
-                            {formatCurrency(order.discount)}
+                            {formatCurrency(order.discountUSD)}
                           </Typography>
                         </TableCell>
                       ) : <TableCell align="center"><Typography variant="body2" color="text.disabled">-</Typography></TableCell>
                     )}
                     {visibleColumns.includes('transactionFees') && (
                       order.orderPaymentStatus !== 'PARTIALLY_REFUNDED' ? (
-                        <TableCell align="right">{formatCurrency(order.transactionFees)}</TableCell>
+                        <TableCell align="right">{formatCurrency(order.transactionFeesUSD)}</TableCell>
                       ) : <TableCell align="center"><Typography variant="body2" color="text.disabled">-</Typography></TableCell>
                     )}
                     {visibleColumns.includes('adFeeGeneral') && (
@@ -2465,9 +2464,10 @@ export default function FulfillmentDashboard() {
                         {order.refunds && order.refunds.length > 0 ? (
                           <Stack spacing={0.5}>
                             {order.refunds.map((refund, idx) => {
-                              // 1. Get Amount (Handle both data structures safely)
+                              // 1. Get Amount in USD (convert using order's conversion rate)
                               const rawValue = refund.amount?.value || refund.refundAmount?.value || 0;
-                              const amount = Number(rawValue).toFixed(2);
+                              const conversionRate = order.conversionRate || 1;
+                              const amountUSD = (Number(rawValue) * conversionRate).toFixed(2);
 
                               // 2. Determine Label & Color based on Order Status
                               // If order says 'FULLY_REFUNDED', we label it Full. Otherwise Partial.
@@ -2478,8 +2478,8 @@ export default function FulfillmentDashboard() {
                               return (
                                 <Chip
                                   key={idx}
-                                  // Result: "Full: $28.17" or "Partial: $15.00"
-                                  label={`${typeLabel}: $${amount}`}
+                                  // Result: "Full: $28.17" or "Partial: $15.00" (in USD)
+                                  label={`${typeLabel}: $${amountUSD}`}
                                   size="small"
                                   color={color}
                                   variant="outlined"
@@ -2762,18 +2762,6 @@ export default function FulfillmentDashboard() {
                     {visibleColumns.includes('messagingStatus') && (
                       <TableCell align="center">
                         <Stack direction="row" spacing={0.5} justifyContent="center">
-                          <Tooltip title="View Earnings Breakdown">
-                            <IconButton
-                              color="success"
-                              size="small"
-                              onClick={() => {
-                                setSelectedOrderForEarnings(order);
-                                setEarningsDialogOpen(true);
-                              }}
-                            >
-                              <ShoppingCartIcon />
-                            </IconButton>
-                          </Tooltip>
                           <Tooltip title="Message Buyer">
                             <IconButton
                               color="primary"
