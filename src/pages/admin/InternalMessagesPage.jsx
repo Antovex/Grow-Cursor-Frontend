@@ -10,7 +10,35 @@ import PersonIcon from '@mui/icons-material/Person';
 import AddIcon from '@mui/icons-material/Add';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CloseIcon from '@mui/icons-material/Close';
+import { io } from 'socket.io-client';
 import api from '../../lib/api.js';
+
+// Notification sound function (using Web Audio API)
+function playNotificationSound() {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    
+    const now = audioContext.currentTime;
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+    
+    oscillator.start(now);
+    oscillator.stop(now + 0.5);
+    
+    console.log('Notification sound played');
+  } catch (err) {
+    console.error('Failed to play notification sound:', err);
+  }
+}
 
 export default function InternalMessagesPage() {
   // State
@@ -37,6 +65,78 @@ export default function InternalMessagesPage() {
   // Refs
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
+  const socketRef = useRef(null);
+  const currentUserIdRef = useRef(null);
+
+  // Get current user ID and set up socket connection
+  useEffect(() => {
+    // Get current user ID from token or API
+    const getUserId = async () => {
+      try {
+        const { data } = await api.get('/auth/me');
+        currentUserIdRef.current = data._id;
+        
+        // Connect to Socket.IO
+        const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+        socketRef.current = socket;
+        
+        socket.on('connect', () => {
+          console.log('Socket connected:', socket.id);
+          // Join user-specific room
+          socket.emit('join', currentUserIdRef.current);
+        });
+        
+        // Listen for new messages
+        socket.on('new-message', ({ message, conversationId }) => {
+          console.log('Received new message:', message);
+          
+          // Play notification sound if page is not visible
+          if (document.hidden) {
+            playNotificationSound();
+            
+            // Also show browser notification if permitted
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('New Team Message', {
+                body: `${message.sender.username}: ${message.body.substring(0, 50)}${message.body.length > 50 ? '...' : ''}`,
+                icon: '/logo.png',
+                tag: 'team-chat',
+                requireInteraction: false
+              }).onclick = () => {
+                window.focus();
+              };
+            }
+          }
+          
+          // Update messages if conversation is currently open
+          if (selectedConversation?.conversationId === conversationId) {
+            setMessages(prev => [...prev, message]);
+          }
+          
+          // Refresh conversations list
+          loadConversations();
+        });
+        
+        socket.on('disconnect', () => {
+          console.log('Socket disconnected');
+        });
+      } catch (err) {
+        console.error('Failed to initialize socket:', err);
+      }
+    };
+    
+    getUserId();
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
 
   // Load conversations on mount
   useEffect(() => {
@@ -48,14 +148,15 @@ export default function InternalMessagesPage() {
     scrollToBottom();
   }, [messages]);
 
-  // Polling for new messages
+  // Fallback polling for new messages (kept as backup)
   useEffect(() => {
     if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
 
     if (selectedConversation) {
+      // Poll every 30 seconds as fallback (less frequent since we have websockets)
       pollingIntervalRef.current = setInterval(() => {
         loadMessages(selectedConversation.conversationId, false);
-      }, 10000); // Poll every 10 seconds
+      }, 30000);
     }
 
     return () => {
