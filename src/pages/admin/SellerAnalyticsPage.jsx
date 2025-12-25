@@ -34,6 +34,7 @@ export default function SellerAnalyticsPage() {
   const [sellers, setSellers] = useState([]);
   const [selectedSeller, setSelectedSeller] = useState('');
   const [groupBy, setGroupBy] = useState('day'); // day, week, month
+  const [searchMarketplace, setSearchMarketplace] = useState(''); // marketplace filter
   
   // Date filter state - similar to FulfillmentDashboard
   const [dateFilter, setDateFilter] = useState(() => {
@@ -87,7 +88,7 @@ export default function SellerAnalyticsPage() {
     }
     
     loadAnalytics();
-  }, [selectedSeller, groupBy, dateFilter, selectedMonth]);
+  }, [selectedSeller, groupBy, dateFilter, selectedMonth, searchMarketplace]);
 
   async function fetchSellers() {
     try {
@@ -152,6 +153,7 @@ export default function SellerAnalyticsPage() {
       };
       
       if (selectedSeller) params.sellerId = selectedSeller;
+      if (searchMarketplace) params.marketplace = searchMarketplace;
 
       const { data } = await api.get('/ebay/seller-analytics', { params });
       setAnalytics(data.analytics || []);
@@ -247,6 +249,20 @@ export default function SellerAnalyticsPage() {
               </Select>
             </FormControl>
 
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Marketplace</InputLabel>
+              <Select
+                value={searchMarketplace}
+                label="Marketplace"
+                onChange={(e) => setSearchMarketplace(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="EBAY_US">US</MenuItem>
+                <MenuItem value="EBAY_ENCA">Canada</MenuItem>
+                <MenuItem value="EBAY_AU">Australia</MenuItem>
+              </Select>
+            </FormControl>
+
             {groupBy === 'month' ? (
               <TextField
                 size="small"
@@ -313,6 +329,7 @@ export default function SellerAnalyticsPage() {
               variant="outlined"
               onClick={() => {
                 setSelectedSeller('');
+                setSearchMarketplace('');
                 setGroupBy('day');
                 const today = new Date();
                 const thirtyDaysAgo = new Date(today);
