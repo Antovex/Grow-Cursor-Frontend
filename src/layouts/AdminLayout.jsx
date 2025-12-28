@@ -64,6 +64,10 @@ import ReplacePage from '../pages/admin/ReplacePage.jsx';
 import INRPage from '../pages/admin/INRPage.jsx';
 import ReturnRequestedPage from '../pages/admin/ReturnRequestedPage.jsx';
 import DisputesPage from '../pages/admin/DisputesPage.jsx';
+import PayoneerSheetPage from '../pages/admin/PayoneerSheetPage.jsx';
+import PaymentAccountsPage from '../pages/admin/PaymentAccountsPage.jsx';
+import BankAccountsPage from '../pages/admin/BankAccountsPage.jsx';
+import TransactionPage from '../pages/admin/TransactionPage.jsx';
 //import MessageReceivedPage from '../pages/admin/MessageReceivedPage.jsx';
 import AboutMePage from '../pages/AboutMePage.jsx';
 import EmployeeDetailsPage from '../pages/admin/EmployeeDetailsPage.jsx';
@@ -72,6 +76,9 @@ import RangeAnalyzerPage from '../pages/admin/RangeAnalyzerPage.jsx';
 
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import CompatibilityDashboard from '../pages/compatibility/CompatibilityDashboard.jsx';
 
 import ConversationManagementPage from '../pages/admin/ConversationManagementPage.jsx';
@@ -147,12 +154,38 @@ export default function AdminLayout({ user, onLogout }) {
 
         {/* Internal Messages Admin - visible to superadmin only */}
         {isSuper && (
-          <ListItem disablePadding>
-            <ListItemButton component={Link} to="/admin/internal-messages-admin" onClick={() => setMobileOpen(false)}>
-              <ListItemIcon><AdminPanelSettingsIcon /></ListItemIcon>
-              <ListItemText primary="View All Messages" />
-            </ListItemButton>
-          </ListItem>
+          <>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} to="/admin/payoneer" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon><AttachMoneyIcon /></ListItemIcon>
+                <ListItemText primary="Payoneer Sheet" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} to="/admin/payment-accounts" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon><AccountBalanceIcon /></ListItemIcon>
+                <ListItemText primary="Payment Accounts" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} to="/admin/bank-accounts" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon><AccountBalanceIcon /></ListItemIcon>
+                <ListItemText primary="Bank Accounts" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} to="/admin/transactions" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon><ReceiptLongIcon /></ListItemIcon>
+                <ListItemText primary="Transactions" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} to="/admin/internal-messages-admin" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon><AdminPanelSettingsIcon /></ListItemIcon>
+                <ListItemText primary="View All Messages" />
+              </ListItemButton>
+            </ListItem>
+          </>
         )}
 
         {/* Product Research - visible to ProductAdmin or Superadmin */}
@@ -491,7 +524,13 @@ export default function AdminLayout({ user, onLogout }) {
           ) : null}
           {isSuper && (
             <>
-              <Route path="/user-credentials" element={<UserCredentialsPage />} />
+              <>
+                <Route path="/user-credentials" element={<UserCredentialsPage />} />
+                <Route path="/payoneer" element={<PayoneerSheetPage />} />
+                <Route path="/payment-accounts" element={<PaymentAccountsPage />} />
+                <Route path="/bank-accounts" element={<BankAccountsPage />} />
+                <Route path="/transactions" element={<TransactionPage />} />
+              </>
             </>
           )}
           {(isSuper || isHRAdmin || isOperationHead) && (
