@@ -29,14 +29,13 @@ import api from '../../lib/api';
 const PayoneerSheetPage = () => {
     const [records, setRecords] = useState([]);
     const [sellers, setSellers] = useState([]);
-    const [paymentAccounts, setPaymentAccounts] = useState([]); // New
+    const [bankAccounts, setBankAccounts] = useState([]); // Changed from paymentAccounts
     const [openDialog, setOpenDialog] = useState(false);
     const [loading, setLoading] = useState(false);
 
     // Form State for "Add New"
     const [formData, setFormData] = useState({
-        paymentAccount: '', // ObjectId
-        bankName: '', // Auto-filled
+        bankAccount: '', // ObjectId of BankAccount
         paymentDate: new Date().toISOString().split('T')[0],
         amount: '',
         exchangeRate: '',
@@ -56,7 +55,7 @@ const PayoneerSheetPage = () => {
     useEffect(() => {
         fetchRecords();
         fetchSellers();
-        fetchPaymentAccounts();
+        fetchBankAccounts();
     }, []);
 
     // Update calculations when Amount or Rate changes (for Add Dialog)
@@ -64,7 +63,7 @@ const PayoneerSheetPage = () => {
         const amount = parseFloat(formData.amount) || 0;
         const rate = parseFloat(formData.exchangeRate) || 0;
         const actualRate = rate + (rate * 0.02);
-        const deposit = amount * rate; // Fixed: Use base rate, not actual rate
+        const deposit = amount * rate;
 
         setPreview({
             actualExchangeRate: actualRate,
@@ -90,22 +89,13 @@ const PayoneerSheetPage = () => {
         }
     };
 
-    const fetchPaymentAccounts = async () => {
+    const fetchBankAccounts = async () => {
         try {
-            const { data } = await api.get('/payment-accounts');
-            setPaymentAccounts(data);
+            const { data } = await api.get('/bank-accounts');
+            setBankAccounts(data);
         } catch (error) {
-            console.error('Error fetching payment accounts:', error);
+            console.error('Error fetching bank accounts:', error);
         }
-    };
-
-    const handleAccountChange = (accountId) => {
-        const account = paymentAccounts.find(a => a._id === accountId);
-        setFormData({
-            ...formData,
-            paymentAccount: accountId,
-            bankName: account ? account.bankAccount?.name : ''
-        });
     };
 
     const handleCreate = async () => {
@@ -116,8 +106,7 @@ const PayoneerSheetPage = () => {
             fetchRecords();
             // Reset form
             setFormData({
-                paymentAccount: '',
-                bankName: '',
+                bankAccount: '',
                 paymentDate: new Date().toISOString().split('T')[0],
                 amount: '',
                 exchangeRate: '',
@@ -144,10 +133,8 @@ const PayoneerSheetPage = () => {
 
     const startEditing = (record) => {
         setEditingId(record._id);
-        const bankName = record.paymentAccount?.bankAccount?.name || '';
         setEditFormData({
-            paymentAccount: record.paymentAccount?._id, // Ensure we get ID
-            bankName: bankName,
+            bankAccount: record.bankAccount?._id,
             paymentDate: record.paymentDate ? record.paymentDate.split('T')[0] : '',
             amount: record.amount,
             exchangeRate: record.exchangeRate,
@@ -168,7 +155,7 @@ const PayoneerSheetPage = () => {
         try {
             await api.put(`/payoneer/${editingId}`, editFormData);
             setEditingId(null);
-            fetchRecords(); // Refresh to get server-side calculations
+            fetchRecords();
         } catch (error) {
             alert('Failed to update: ' + (error.response?.data?.error || error.message));
         }
@@ -179,8 +166,8 @@ const PayoneerSheetPage = () => {
         const isEditing = editingId === record._id;
         let value = isEditing ? editFormData[field] : (field === 'store' ? (record.store?.user?.username || 'Unknown') : record[field]);
 
-        if (!isEditing && field === 'paymentAccount') {
-            value = record.paymentAccount?.name || 'Unknown';
+        if (!isEditing && field === 'bankAccount') {
+            value = record.bankAccount?.name || 'Unknown';
         }
 
         if (!isEditing) {
@@ -190,39 +177,21 @@ const PayoneerSheetPage = () => {
             return value;
         }
 
-        if (field === 'paymentAccount') {
+        if (field === 'bankAccount') {
             return (
                 <TextField
                     select
                     size="small"
-                    value={editFormData.paymentAccount || ''}
-                    onChange={(e) => {
-                        const acc = paymentAccounts.find(a => a._id === e.target.value);
-                        setEditFormData(prev => ({
-                            ...prev,
-                            paymentAccount: e.target.value,
-                            bankName: acc ? acc.bankAccount?.name : '' // Update bankName on linking
-                        }));
-                    }}
-                    sx={{ minWidth: 120 }}
+                    value={editFormData.bankAccount || ''}
+                    onChange={(e) => handleEditChange('bankAccount', e.target.value)}
+                    sx={{ minWidth: 150 }}
                 >
-                    {paymentAccounts.map((acc) => (
+                    {bankAccounts.map((acc) => (
                         <MenuItem key={acc._id} value={acc._id}>
                             {acc.name}
                         </MenuItem>
                     ))}
                 </TextField>
-            );
-        }
-
-        if (field === 'bankName') {
-            return (
-                <TextField
-                    size="small"
-                    value={editFormData.bankName || ''}
-                    disabled // Read-only derived
-                    sx={{ minWidth: 100 }}
-                />
             );
         }
 
@@ -250,7 +219,7 @@ const PayoneerSheetPage = () => {
                 size="small"
                 value={value}
                 onChange={(e) => handleEditChange(field, e.target.value)}
-                sx={{ maxWidth: field === 'paymentAccount' ? 150 : 100 }}
+                sx={{ maxWidth: 100 }}
             />
         );
     };
@@ -272,8 +241,7 @@ const PayoneerSheetPage = () => {
                 <Table>
                     <TableHead>
                         <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                            <TableCell>Payment Account</TableCell>
-                            <TableCell>Bank Name</TableCell>
+                            <TableCell>Bank Account</TableCell>
                             <TableCell>Payment Date</TableCell>
                             <TableCell>Store Name</TableCell>
                             <TableCell>Amount ($)</TableCell>
@@ -288,8 +256,7 @@ const PayoneerSheetPage = () => {
                             const isEditing = editingId === record._id;
                             return (
                                 <TableRow key={record._id}>
-                                    <TableCell>{renderCell(record, 'paymentAccount')}</TableCell>
-                                    <TableCell>{record.paymentAccount?.bankAccount?.name || 'Unknown'}</TableCell>
+                                    <TableCell>{renderCell(record, 'bankAccount')}</TableCell>
                                     <TableCell>{renderCell(record, 'paymentDate', 'date')}</TableCell>
                                     <TableCell>{renderCell(record, 'store')}</TableCell>
                                     <TableCell>{renderCell(record, 'amount', 'number')}</TableCell>
@@ -337,7 +304,7 @@ const PayoneerSheetPage = () => {
                         })}
                         {records.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={9} align="center">
+                                <TableCell colSpan={8} align="center">
                                     No records found. Click "Add Record" to create one.
                                 </TableCell>
                             </TableRow>
@@ -353,35 +320,19 @@ const PayoneerSheetPage = () => {
                     <Box display="flex" flexDirection="column" gap={2} mt={1}>
                         <TextField
                             select
-                            label="Payment Account"
+                            label="Bank Account"
                             fullWidth
-                            value={formData.paymentAccount}
-                            onChange={(e) => handleAccountChange(e.target.value)}
+                            value={formData.bankAccount}
+                            onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
                         >
-                            {paymentAccounts.map((acc) => (
+                            {bankAccounts.map((acc) => (
                                 <MenuItem key={acc._id} value={acc._id}>
                                     {acc.name}
                                 </MenuItem>
                             ))}
                         </TextField>
 
-                        <TextField
-                            label="Bank Name (Auto-filled)"
-                            fullWidth
-                            value={formData.bankName}
-                            disabled
-                            InputProps={{ readOnly: true }}
-                        />
-
-                        <TextField
-                            label="Payment Date"
-                            type="date"
-                            fullWidth
-                            InputLabelProps={{ shrink: true }}
-                            value={formData.paymentDate}
-                            onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                        />
-
+                        {/* Store Name Selection */}
                         <TextField
                             select
                             label="Store Name"
@@ -395,6 +346,15 @@ const PayoneerSheetPage = () => {
                                 </MenuItem>
                             ))}
                         </TextField>
+
+                        <TextField
+                            label="Payment Date"
+                            type="date"
+                            fullWidth
+                            InputLabelProps={{ shrink: true }}
+                            value={formData.paymentDate}
+                            onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                        />
 
                         <Box display="flex" gap={2}>
                             <TextField

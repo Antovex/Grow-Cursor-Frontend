@@ -65,7 +65,6 @@ import INRPage from '../pages/admin/INRPage.jsx';
 import ReturnRequestedPage from '../pages/admin/ReturnRequestedPage.jsx';
 import DisputesPage from '../pages/admin/DisputesPage.jsx';
 import PayoneerSheetPage from '../pages/admin/PayoneerSheetPage.jsx';
-import PaymentAccountsPage from '../pages/admin/PaymentAccountsPage.jsx';
 import BankAccountsPage from '../pages/admin/BankAccountsPage.jsx';
 import TransactionPage from '../pages/admin/TransactionPage.jsx';
 //import MessageReceivedPage from '../pages/admin/MessageReceivedPage.jsx';
@@ -159,12 +158,6 @@ export default function AdminLayout({ user, onLogout }) {
               <ListItemButton component={Link} to="/admin/payoneer" onClick={() => setMobileOpen(false)}>
                 <ListItemIcon><AttachMoneyIcon /></ListItemIcon>
                 <ListItemText primary="Payoneer Sheet" />
-              </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-              <ListItemButton component={Link} to="/admin/payment-accounts" onClick={() => setMobileOpen(false)}>
-                <ListItemIcon><AccountBalanceIcon /></ListItemIcon>
-                <ListItemText primary="Payment Accounts" />
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
@@ -527,7 +520,6 @@ export default function AdminLayout({ user, onLogout }) {
               <>
                 <Route path="/user-credentials" element={<UserCredentialsPage />} />
                 <Route path="/payoneer" element={<PayoneerSheetPage />} />
-                <Route path="/payment-accounts" element={<PaymentAccountsPage />} />
                 <Route path="/bank-accounts" element={<BankAccountsPage />} />
                 <Route path="/transactions" element={<TransactionPage />} />
               </>

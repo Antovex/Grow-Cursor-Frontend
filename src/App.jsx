@@ -14,7 +14,6 @@ import AboutMePage from './pages/AboutMePage.jsx';
 import ReturnRequestedPage from './pages/admin/ReturnRequestedPage.jsx';
 import MessageReceivedPage from './pages/admin/MessageReceivedPage.jsx';
 import PayoneerSheetPage from './pages/admin/PayoneerSheetPage.jsx';
-import PaymentAccountsPage from './pages/admin/PaymentAccountsPage.jsx';
 import BankAccountsPage from './pages/admin/BankAccountsPage.jsx';
 import TransactionPage from './pages/admin/TransactionPage.jsx';
 import IdeasPage from './pages/IdeasPage.jsx';
