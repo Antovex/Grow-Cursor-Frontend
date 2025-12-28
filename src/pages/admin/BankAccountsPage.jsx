@@ -26,7 +26,7 @@ const BankAccountsPage = () => {
     const [accounts, setAccounts] = useState([]);
     const [openDialog, setOpenDialog] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [formData, setFormData] = useState({ name: '', accountNumber: '' });
+    const [formData, setFormData] = useState({ name: '', accountNumber: '', ifscCode: '' });
 
     useEffect(() => {
         fetchAccounts();
@@ -57,7 +57,11 @@ const BankAccountsPage = () => {
 
     const handleEdit = (account) => {
         setEditingId(account._id);
-        setFormData({ name: account.name, accountNumber: account.accountNumber || '' });
+        setFormData({
+            name: account.name,
+            accountNumber: account.accountNumber || '',
+            ifscCode: account.ifscCode || ''
+        });
         setOpenDialog(true);
     };
 
@@ -74,7 +78,7 @@ const BankAccountsPage = () => {
     const handleClose = () => {
         setOpenDialog(false);
         setEditingId(null);
-        setFormData({ name: '', accountNumber: '' });
+        setFormData({ name: '', accountNumber: '', ifscCode: '' });
     };
 
     return (
@@ -96,6 +100,7 @@ const BankAccountsPage = () => {
                         <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                             <TableCell>Bank Name</TableCell>
                             <TableCell>Account Number</TableCell>
+                            <TableCell>IFSC Code</TableCell>
                             <TableCell align="right">Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -104,6 +109,7 @@ const BankAccountsPage = () => {
                             <TableRow key={acc._id}>
                                 <TableCell>{acc.name}</TableCell>
                                 <TableCell>{acc.accountNumber}</TableCell>
+                                <TableCell>{acc.ifscCode}</TableCell>
                                 <TableCell align="right">
                                     <IconButton onClick={() => handleEdit(acc)} color="primary"><EditIcon /></IconButton>
                                     <IconButton onClick={() => handleDelete(acc._id)} color="error"><DeleteIcon /></IconButton>
@@ -112,7 +118,7 @@ const BankAccountsPage = () => {
                         ))}
                         {accounts.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={3} align="center">No accounts found.</TableCell>
+                                <TableCell colSpan={4} align="center">No accounts found.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
@@ -134,6 +140,12 @@ const BankAccountsPage = () => {
                             fullWidth
                             value={formData.accountNumber}
                             onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                        />
+                        <TextField
+                            label="IFSC Code (Optional)"
+                            fullWidth
+                            value={formData.ifscCode}
+                            onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value })}
                         />
                     </Box>
                 </DialogContent>
