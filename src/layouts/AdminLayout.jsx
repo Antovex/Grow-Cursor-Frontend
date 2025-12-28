@@ -85,6 +85,7 @@ import ManageAmazonAccountsPage from '../pages/admin/ManageAmazonAccountsPage.js
 import InternalMessagesPage from '../pages/admin/InternalMessagesPage.jsx';
 import InternalMessagesAdminPage from '../pages/admin/InternalMessagesAdminPage.jsx';
 import ManageCreditCardsPage from '../pages/admin/ManageCreditCardsPage.jsx';
+import ManageCreditCardNamesPage from '../pages/admin/ManageCreditCardNamesPage.jsx';
 import IdeasPage from '../pages/IdeasPage.jsx';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import OrderAnalyticsPage from '../pages/admin/OrderAnalyticsPage.jsx';
@@ -170,6 +171,12 @@ export default function AdminLayout({ user, onLogout }) {
               <ListItemButton component={Link} to="/admin/transactions" onClick={() => setMobileOpen(false)}>
                 <ListItemIcon><ReceiptLongIcon /></ListItemIcon>
                 <ListItemText primary="Transactions" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton component={Link} to="/admin/credit-card-names" onClick={() => setMobileOpen(false)}>
+                <ListItemIcon><ReceiptLongIcon /></ListItemIcon>
+                <ListItemText primary="Credit Card Names" />
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
@@ -567,6 +574,7 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/conversation-management" element={<ConversationManagementPage />} />
               <Route path="/amazon-accounts" element={<ManageAmazonAccountsPage />} />
               <Route path="/credit-cards" element={<ManageCreditCardsPage />} />
+              <Route path="/credit-card-names" element={<ManageCreditCardNamesPage />} />
             </>
           )}
 

@@ -35,7 +35,9 @@ import api from '../../lib/api';
 const TransactionPage = () => {
     const [transactions, setTransactions] = useState([]);
     const [bankAccounts, setBankAccounts] = useState([]);
-    const [balanceSummary, setBalanceSummary] = useState([]); // Balance state
+    const [creditCards, setCreditCards] = useState([]);
+    const [balanceSummary, setBalanceSummary] = useState([]);
+    const [creditCardSummary, setCreditCardSummary] = useState([]); // NEW
     const [openDialog, setOpenDialog] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -44,17 +46,38 @@ const TransactionPage = () => {
 
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
-        bankAccount: '', // Changed
-        transactionType: 'Debit', // Default for manual
+        bankAccount: '',
+        transactionType: 'Debit',
         amount: '',
-        remark: ''
+        remark: '',
+        creditCardName: '' // NEW
     });
 
     useEffect(() => {
         fetchTransactions();
         fetchBankAccounts();
+        fetchCreditCards();
         fetchBalanceSummary();
+        fetchCreditCardSummary(); // NEW
     }, []);
+
+    const fetchCreditCards = async () => {
+        try {
+            const { data } = await api.get('/credit-card-names');
+            setCreditCards(data);
+        } catch (error) {
+            console.error('Error fetching credit cards:', error);
+        }
+    };
+
+    const fetchCreditCardSummary = async () => {
+        try {
+            const { data } = await api.get('/transactions/credit-card-summary');
+            setCreditCardSummary(data);
+        } catch (error) {
+            console.error('Error fetching credit card summary:', error);
+        }
+    };
 
     const fetchTransactions = async () => {
         try {
@@ -96,6 +119,7 @@ const TransactionPage = () => {
             handleClose();
             fetchTransactions();
             fetchBalanceSummary();
+            fetchCreditCardSummary();
         } catch (error) {
             alert('Failed to save: ' + (error.response?.data?.error || error.message));
         } finally {
@@ -109,6 +133,7 @@ const TransactionPage = () => {
             await api.delete(`/transactions/${id}`);
             fetchTransactions();
             fetchBalanceSummary();
+            fetchCreditCardSummary();
         } catch (error) {
             alert(error.response?.data?.error || 'Failed to delete');
         }
@@ -121,7 +146,8 @@ const TransactionPage = () => {
             bankAccount: txn.bankAccount?._id,
             transactionType: txn.transactionType,
             amount: txn.amount,
-            remark: txn.remark
+            remark: txn.remark,
+            creditCardName: txn.creditCardName?._id || ''
         });
         setOpenDialog(true);
     };
@@ -134,7 +160,8 @@ const TransactionPage = () => {
             bankAccount: '',
             transactionType: 'Debit',
             amount: '',
-            remark: ''
+            remark: '',
+            creditCardName: ''
         });
     };
 
@@ -152,6 +179,7 @@ const TransactionPage = () => {
             </Box>
 
             {/* Balance Summary Cards */}
+            <Typography variant="h6" gutterBottom>Bank Accounts</Typography>
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 {balanceSummary.map((item) => (
                     <Grid item xs={12} sm={6} md={3} key={item._id}>
@@ -173,6 +201,34 @@ const TransactionPage = () => {
                     </Grid>
                 ))}
             </Grid>
+
+            {/* Credit Card Summary Cards */}
+            {creditCardSummary.length > 0 && (
+                <>
+                    <Typography variant="h6" gutterBottom>Credit Cards (Total Transferred)</Typography>
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                        {creditCardSummary.map((item) => (
+                            <Grid item xs={12} sm={6} md={3} key={item._id}>
+                                <Card>
+                                    <CardContent>
+                                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                            <Box>
+                                                <Typography color="text.secondary" variant="body2">
+                                                    {item.cardName}
+                                                </Typography>
+                                                <Typography variant="h5" sx={{ mt: 1, color: 'primary.main' }}>
+                                                    ₹{item.balance.toFixed(2)}
+                                                </Typography>
+                                            </Box>
+                                            <AccountBalanceIcon sx={{ fontSize: 40, color: 'secondary.main', opacity: 0.3 }} />
+                                        </Stack>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        ))}
+                    </Grid>
+                </>
+            )}
 
             <TableContainer component={Paper}>
                 <Table>
@@ -200,7 +256,14 @@ const TransactionPage = () => {
                                         variant="outlined"
                                     />
                                 </TableCell>
-                                <TableCell>{txn.remark}</TableCell>
+                                <TableCell>
+                                    {txn.remark}
+                                    {txn.creditCardName && (
+                                        <Typography variant="caption" display="block" color="text.secondary">
+                                            To: {txn.creditCardName.name}
+                                        </Typography>
+                                    )}
+                                </TableCell>
                                 <TableCell>
                                     <Chip
                                         label={txn.source}
@@ -250,7 +313,7 @@ const TransactionPage = () => {
 
                         <TextField
                             select
-                            label="Bank Account"
+                            label={formData.transactionType === 'Debit' ? "From (Bank Account)" : "To (Bank Account)"}
                             fullWidth
                             value={formData.bankAccount}
                             onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
@@ -261,6 +324,26 @@ const TransactionPage = () => {
                                 </MenuItem>
                             ))}
                         </TextField>
+
+                        {/* NEW: Credit Card Dropdown for Debit */}
+                        {formData.transactionType === 'Debit' && (
+                            <TextField
+                                select
+                                label="To (Credit Card Name)"
+                                fullWidth
+                                value={formData.creditCardName || ''}
+                                onChange={(e) => setFormData({ ...formData, creditCardName: e.target.value })}
+                            >
+                                <MenuItem value="">
+                                    <em>None</em>
+                                </MenuItem>
+                                {creditCards.map((card) => (
+                                    <MenuItem key={card._id} value={card._id}>
+                                        {card.name}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        )}
 
                         <Box>
                             <Typography variant="caption" color="text.secondary" mb={1} display="block">
