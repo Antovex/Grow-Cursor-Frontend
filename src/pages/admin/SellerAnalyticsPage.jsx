@@ -439,24 +439,24 @@ export default function SellerAnalyticsPage() {
             : 'Select a date range to view analytics.'}
         </Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
+        <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
+          <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd' }}>
+                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd', position: 'sticky', top: 0, zIndex: 100 }}>
                   {groupBy === 'day' ? 'Date' : groupBy === 'week' ? 'Week' : 'Month'}
                 </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd' }}>Orders</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0' }}>Subtotal</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0' }}>Shipping</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0' }}>Sales Tax</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0' }}>Transaction Fees</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0' }}>Ad Fees</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff9c4' }}>Earnings</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e1f5fe' }}>P.Balance (INR)</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e8f5e9' }}>A_total-inr</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fce4ec' }}>Credit Card Fees</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#c8e6c9' }}>Profit (INR)</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd', position: 'sticky', top: 0, zIndex: 100 }}>Orders</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0', position: 'sticky', top: 0, zIndex: 100 }}>Subtotal</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0', position: 'sticky', top: 0, zIndex: 100 }}>Shipping</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0', position: 'sticky', top: 0, zIndex: 100 }}>Sales Tax</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0', position: 'sticky', top: 0, zIndex: 100 }}>Transaction Fees</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0', position: 'sticky', top: 0, zIndex: 100 }}>Ad Fees</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fff9c4', position: 'sticky', top: 0, zIndex: 100 }}>Earnings</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e1f5fe', position: 'sticky', top: 0, zIndex: 100 }}>P.Balance (INR)</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e8f5e9', position: 'sticky', top: 0, zIndex: 100 }}>A_total-inr</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fce4ec', position: 'sticky', top: 0, zIndex: 100 }}>Credit Card Fees</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#c8e6c9', position: 'sticky', top: 0, zIndex: 100 }}>Profit (INR)</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
