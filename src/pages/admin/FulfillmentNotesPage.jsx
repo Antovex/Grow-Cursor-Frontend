@@ -71,14 +71,30 @@ function ChatDialog({ open, onClose, order }) {
   const startPolling = () => {
     stopPolling();
     pollingInterval.current = setInterval(() => {
-      loadMessages(false);
-    }, 5000);
+      if (order) {
+        const itemId = order.itemNumber || order.lineItems?.[0]?.legacyItemId;
+        api
+          .post("/ebay/sync-thread", {
+            sellerId: order.seller?._id || order.seller,
+            buyerUsername: order.buyer?.username,
+            itemId: itemId,
+          })
+          .then((res) => {
+            if (res.data.newMessagesFound) {
+              loadMessages(false);
+            }
+          })
+          .catch((err) => console.error("Polling error", err));
+      }
+    }, 10000);
   };
 
   async function loadMessages(showLoading = true) {
     if (showLoading) setLoading(true);
     try {
-      const { data } = await api.get(`/ebay/messages/${order.orderId}`);
+      const { data } = await api.get("/ebay/chat/messages", {
+        params: { orderId: order.orderId },
+      });
       setMessages(data || []);
     } catch (err) {
       console.error('Error loading messages:', err);
@@ -91,12 +107,20 @@ function ChatDialog({ open, onClose, order }) {
     if (!newMessage.trim()) return;
     setSending(true);
     try {
-      await api.post(`/ebay/send-message/${order.orderId}`, { message: newMessage });
-      setNewMessage('');
-      await loadMessages(false);
+      const itemId = order.itemNumber || order.lineItems?.[0]?.legacyItemId;
+      const { data } = await api.post("/ebay/send-message", {
+        orderId: order.orderId,
+        buyerUsername: order.buyer?.username,
+        itemId: itemId,
+        body: newMessage,
+        subject: `Regarding Order #${order.orderId}`,
+      });
+
+      setMessages([...messages, data.message]);
+      setNewMessage("");
     } catch (err) {
       console.error('Error sending message:', err);
-      alert('Failed to send message');
+      alert('Failed to send: ' + (err.response?.data?.error || err.message));
     } finally {
       setSending(false);
     }
@@ -114,24 +138,24 @@ function ChatDialog({ open, onClose, order }) {
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: '#fff', position: 'relative' }}>
+            <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: '#fff', position: 'relative' }}>
         <Stack 
           direction="row" 
           spacing={1} 
           alignItems="center" 
           sx={{ position: 'absolute', top: 12, right: 12 }}
         >
-          <Chip 
-            label={sellerName} 
-            size="small" 
-            icon={<PersonIcon style={{ fontSize: 16 }} />} 
-            sx={{ 
-              bgcolor: '#e3f2fd', 
-              color: '#1565c0', 
-              fontWeight: 'bold', 
+          <Chip
+            label={sellerName}
+            size='small'
+            icon={<PersonIcon style={{ fontSize: 16 }} />}
+            sx={{
+              bgcolor: '#e3f2fd',
+              color: '#1565c0',
+              fontWeight: 'bold',
               height: 24,
-              fontSize: '0.75rem'
-            }} 
+              fontSize: '0.75rem',
+            }}
           />
           <IconButton onClick={onClose} size="small" sx={{ color: 'text.disabled', ml: 1 }}>
             <CloseIcon />
@@ -139,9 +163,9 @@ function ChatDialog({ open, onClose, order }) {
         </Stack>
 
         <Stack spacing={1.5} sx={{ pr: 12 }}> 
-          <Stack direction="row" alignItems="center" spacing={3} sx={{ mt: 0.5 }}>
+        <Stack direction="row" alignItems="center" spacing={3} sx={{ mt: 0.5 }}>
             <Box>
-              <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+            <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
                 Buyer Name
               </Typography>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.1 }}>
@@ -152,7 +176,7 @@ function ChatDialog({ open, onClose, order }) {
             <Divider orientation="vertical" flexItem sx={{ height: 20, alignSelf: 'center', opacity: 0.5 }} />
 
             <Box>
-              <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+            <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
                 Username
               </Typography>
               <Typography variant="body2" sx={{ fontFamily: 'monospace', bgcolor: 'rgba(0,0,0,0.05)', px: 0.5, borderRadius: 0.5 }}>
@@ -162,27 +186,22 @@ function ChatDialog({ open, onClose, order }) {
           </Stack>
 
           <Box>
-            <Link 
-              href={`https://www.ebay.com/itm/${itemId}`} 
-              target="_blank" 
+            <Link
+              href={`https://www.ebay.com/itm/${itemId}`}
+              target="_blank"
               rel="noopener noreferrer"
               underline="hover"
               sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}
             >
-              <Typography 
-                variant="subtitle2" 
-                sx={{ 
-                  color: 'primary.main', 
-                  fontWeight: 600,
-                  lineHeight: 1.3
-                }}
-              >
+              <Typography variant="subtitle2" sx={{ color: 'primary.main', fontWeight: 600, lineHeight: 1.3 }}>
                 {itemTitle || `Item ID: ${itemId}`}
               </Typography>
-              <OpenInNewIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.3 }} />
+              <OpenInNewIcon
+                sx={{ fontSize: 16, color: "primary.main", mt: 0.3 }}
+              />
             </Link>
 
-            <Chip 
+            <Chip
               label={`Order #: ${order?.orderId}`}
               size="small"
               variant="outlined"
@@ -199,7 +218,9 @@ function ChatDialog({ open, onClose, order }) {
         </Stack>
       </Box>
 
-      <DialogContent sx={{ p: 0, bgcolor: '#f0f2f5', height: '500px', display: 'flex', flexDirection: 'column' }}>
+      <DialogContent
+        sx={{ p: 0, bgcolor: '#f0f2f5', height: '500px', display: 'flex', flexDirection: 'column' }}
+      >
         <Box sx={{ flex: 1, p: 2, overflowY: 'auto' }}>
           {loading ? (
             <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>
@@ -210,31 +231,31 @@ function ChatDialog({ open, onClose, order }) {
                   No messages yet. Start the conversation below!
                 </Alert>
               )}
-              
+
               {messages.map((msg) => (
                 <Box 
-                  key={msg._id} 
-                  sx={{ 
-                    alignSelf: msg.sender === 'SELLER' ? 'flex-end' : 'flex-start',
-                    maxWidth: '70%'
+                key={msg._id} 
+                sx={{ 
+                  alignSelf: msg.sender === 'SELLER' ? 'flex-end' : 'flex-start',
+                  maxWidth: '70%'
                   }}
                 >
-                  <Paper 
+                  <Paper
                     elevation={1}
                     sx={{ 
                       p: 1.5, 
                       bgcolor: msg.sender === 'SELLER' ? '#1976d2' : '#ffffff',
                       color: msg.sender === 'SELLER' ? '#fff' : 'text.primary',
                       borderRadius: 2,
-                      position: 'relative'
+                      position: 'relative',
                     }}
                   >
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{msg.body}</Typography>
-                     
+
                     {msg.mediaUrls && msg.mediaUrls.length > 0 && (
                       <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                         {msg.mediaUrls.map((url, idx) => (
-                          <Box 
+                          <Box
                             key={idx}
                             component="img"
                             src={url}
@@ -264,7 +285,9 @@ function ChatDialog({ open, onClose, order }) {
           )}
         </Box>
 
-        <Box sx={{ p: 2, bgcolor: '#fff', borderTop: 1, borderColor: 'divider', display: 'flex', gap: 1 }}>
+        <Box
+          sx={{ p: 2, bgcolor: '#fff', borderTop: 1, borderColor: 'divider', display: 'flex', gap: 1 }}
+        >
           <TextField
             fullWidth
             multiline
@@ -307,7 +330,7 @@ function NotesCell({ order, onSave, onNotify }) {
       setEditing(false);
       return;
     }
-    
+
     setSaving(true);
     try {
       await onSave(order._id, value);
@@ -370,7 +393,6 @@ function NotesCell({ order, onSave, onNotify }) {
           textOverflow: 'ellipsis',
           bgcolor: 'transparent',
           p: 1,
-          borderRadius: 1,
           border: '1px solid',
           borderColor: 'divider',
           cursor: 'pointer',
@@ -380,7 +402,7 @@ function NotesCell({ order, onSave, onNotify }) {
         }}
       >
         <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {order.fulfillmentNotes || 'Click to add note'}
+        {order.fulfillmentNotes || 'Click to add note'}
         </Typography>
       </Box>
     </Tooltip>
@@ -391,7 +413,7 @@ export default function FulfillmentNotesPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   // Pagination State
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -401,37 +423,37 @@ export default function FulfillmentNotesPage() {
   const [sellers, setSellers] = useState([]);
   const [selectedSeller, setSelectedSeller] = useState('');
   const [searchOrderId, setSearchOrderId] = useState('');
-  
+
   // Debounced Values
   const [debouncedOrderId, setDebouncedOrderId] = useState('');
-  
+
   // Message dialog state
   const [messageModalOpen, setMessageModalOpen] = useState(false);
   const [selectedOrderForMessage, setSelectedOrderForMessage] = useState(null);
-  
+
   // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  
+
   // Handlers for messaging
   const handleOpenMessageDialog = (order) => {
     setSelectedOrderForMessage(order);
     setMessageModalOpen(true);
   };
-  
+
   const handleCloseMessageDialog = () => {
     setMessageModalOpen(false);
     setSelectedOrderForMessage(null);
   };
-  
+
   // Handler for saving notes
   const handleSaveNote = async (orderId, newNote) => {
     await api.patch(`/ebay/orders/${orderId}/fulfillment-notes`, { fulfillmentNotes: newNote });
     // Refresh orders to show updated note
     setOrders(prev => prev.map(o => o._id === orderId ? { ...o, fulfillmentNotes: newNote } : o));
   };
-  
+
   // Notification helper
   const showNotification = (severity, message) => {
     setSnackbarSeverity(severity);
@@ -484,7 +506,7 @@ export default function FulfillmentNotesPage() {
   async function fetchOrdersWithNotes() {
     setError('');
     setLoading(true);
-    
+
     try {
       const params = { 
         hasFulfillmentNotes: true,
@@ -498,7 +520,7 @@ export default function FulfillmentNotesPage() {
       const { data } = await api.get('/ebay/stored-orders', { params });
 
       setOrders(data?.orders || []);
-      
+
       if (data?.pagination) {
         setTotalPages(data.pagination.totalPages);
         setTotalOrders(data.pagination.totalOrders);
@@ -535,7 +557,6 @@ export default function FulfillmentNotesPage() {
         {/* FILTERS SECTION */}
         <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-            
             {/* 1. SELLER FILTER */}
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel id="seller-select-label">Select Seller</InputLabel>
@@ -598,13 +619,13 @@ export default function FulfillmentNotesPage() {
               '&::-webkit-scrollbar-track': {
                 backgroundColor: '#f1f1f1',
                 borderRadius: '10px',
-              },
-              '&::-webkit-scrollbar-thumb': {
+                '&::-webkit-scrollbar-thumb': {
                 backgroundColor: '#888',
                 borderRadius: '10px',
                 '&:hover': {
-                  backgroundColor: '#555',
+                  backgroundColor: '#555', 
                 },
+              },
               },
             }}
           >
@@ -615,13 +636,14 @@ export default function FulfillmentNotesPage() {
             >
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Seller</TableCell>
+                <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Seller</TableCell>
                   <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Order ID</TableCell>
                   <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Marketplace</TableCell>
-                  
+
                   <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100 }}>Buyer Name</TableCell>
-                  
+                  <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100, minWidth: 200 }}>Item Details</TableCell>
                   <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100, minWidth: 300 }}>Fulfillment Notes</TableCell>
+                  <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 100, align: 'center' }}>Chat</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -629,19 +651,19 @@ export default function FulfillmentNotesPage() {
                   const itemCount = order.lineItems?.length || 0;
                   const firstItem = order.lineItems?.[0] || {};
                   const hasMultipleItems = itemCount > 1;
-                  
+
                   return (
                     <TableRow key={order._id || idx} hover>
                       <TableCell>
                         {order.seller?.user?.username || order.seller?.user?.email || order.sellerId || '-'}
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" fontWeight="medium" sx={{ color: 'primary.main' }}>
-                          {order.orderId || order.legacyOrderId || '-'}
+                      <Typography variant="body2" fontWeight="medium" sx={{ color: 'primary.main' }}>
+                      {order.orderId || order.legacyOrderId || '-'}
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Chip 
+                      <Chip 
                           label={order.purchaseMarketplaceId || 'Unknown'} 
                           size="small" 
                           variant="outlined"
@@ -653,21 +675,59 @@ export default function FulfillmentNotesPage() {
                           }
                         />
                       </TableCell>
-                      
+
                       <TableCell>
-                        <Tooltip title={order.buyer?.buyerRegistrationAddress?.fullName || '-'} arrow>
+                      <Tooltip title={order.buyer?.buyerRegistrationAddress?.fullName || '-'} arrow>
                           <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>
                             {order.buyer?.buyerRegistrationAddress?.fullName || '-'}
                           </Typography>
                         </Tooltip>
                       </TableCell>
-                      
+
+                      <TableCell>
+                        <Stack spacing={0.5}>
+                          <Tooltip title={firstItem.title || 'No product info'} arrow>
+                            <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, fontWeight: 500 }}>
+                              {firstItem.title || '-'}
+                            </Typography>
+                          </Tooltip>
+                          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                            <Chip 
+                              label={`Qty: ${itemCount}`}
+                              size="small"
+                              variant="outlined"
+                            />
+                            {hasMultipleItems && (
+                              <Tooltip title={`${itemCount} items in this order`} arrow>
+                                <Chip 
+                                  label="Multiple"
+                                  size="small"
+                                  color="warning"
+                                  variant="filled"
+                                />
+                              </Tooltip>
+                            )}
+                          </Stack>
+                        </Stack>
+                      </TableCell>
+
                       <TableCell>
                         <NotesCell 
                           order={order} 
                           onSave={handleSaveNote} 
                           onNotify={showNotification} 
                         />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Message Buyer">
+                          <IconButton
+                            color="primary"
+                            size="small"
+                            onClick={() => handleOpenMessageDialog(order)}
+                          >
+                            <ChatIcon />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   );
@@ -689,7 +749,7 @@ export default function FulfillmentNotesPage() {
           )}
         </>
       )}
-      
+
       {/* Chat Dialog */}
       {selectedOrderForMessage && (
         <ChatDialog 
@@ -698,7 +758,7 @@ export default function FulfillmentNotesPage() {
           order={selectedOrderForMessage} 
         />
       )}
-      
+
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbarOpen}
