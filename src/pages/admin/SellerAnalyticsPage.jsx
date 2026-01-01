@@ -23,6 +23,10 @@ import {
   CardContent,
   Grid
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { parse, format } from 'date-fns';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
@@ -264,15 +268,24 @@ export default function SellerAnalyticsPage() {
             </FormControl>
 
             {groupBy === 'month' ? (
-              <TextField
-                size="small"
-                label="Select Month"
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{ width: 180 }}
-              />
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="Select Month"
+                  views={['year', 'month']}
+                  value={selectedMonth ? parse(selectedMonth + '-01', 'yyyy-MM-dd', new Date()) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      setSelectedMonth(format(date, 'yyyy-MM'));
+                    }
+                  }}
+                  slotProps={{
+                    textField: {
+                      size: "small",
+                      sx: { width: 180 }
+                    }
+                  }}
+                />
+              </LocalizationProvider>
             ) : (
               <>
                 <FormControl size="small" sx={{ minWidth: 130 }}>
