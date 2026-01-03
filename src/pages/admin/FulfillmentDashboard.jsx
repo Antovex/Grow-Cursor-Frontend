@@ -431,7 +431,7 @@ function ChatDialog({ open, onClose, order }) {
             </Link>
 
             <Chip
-              label={`Order: ${order?.orderId?.slice(-12) || order?.orderId}`}
+              label={`Order: ${order?.orderId || order?.legacyOrderId || 'N/A'}`}
               size="small"
               variant="outlined"
               sx={{
@@ -584,7 +584,7 @@ function MobileOrderCard({ order, index, onCopy, onMessage, onViewImages, format
               sx={{ cursor: 'pointer' }}
               onClick={() => onCopy(order.orderId)}
             >
-              {order.orderId?.slice(-12) || '-'}
+              {order.orderId || order.legacyOrderId || '-'}
             </Typography>
           </Box>
           <Stack direction="row" spacing={0.5} alignItems="center">
