@@ -55,6 +55,8 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 import PersonIcon from '@mui/icons-material/Person'; // <--- Add this
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'; // <--- Add this
+import DeleteIcon from '@mui/icons-material/Delete';
+import SaveIcon from '@mui/icons-material/Save';
 
 
 import api from '../../lib/api';
@@ -986,6 +988,11 @@ function FulfillmentDashboard() {
   );
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
 
+  // Column presets state
+  const [columnPresets, setColumnPresets] = useState([]);
+  const [newPresetName, setNewPresetName] = useState('');
+  const [presetsLoading, setPresetsLoading] = useState(false);
+
   const [dateFilter, setDateFilter] = useState(() => getInitialState('dateFilter', {
     mode: 'none', // 'none' | 'single' | 'range'
     single: '',
@@ -1013,6 +1020,52 @@ function FulfillmentDashboard() {
     }
   }, [selectedSeller, searchOrderId, searchBuyerName, searchMarketplace, searchPaymentStatus, filtersExpanded, currentPage, dateFilter, visibleColumns]);
 
+  // Fetch column presets on mount
+  useEffect(() => {
+    const fetchPresets = async () => {
+      try {
+        const { data } = await api.get('/column-presets');
+        setColumnPresets(data);
+      } catch (e) {
+        console.error('Error fetching column presets:', e);
+      }
+    };
+    fetchPresets();
+  }, []);
+
+  // Save a new column preset
+  const saveColumnPreset = async () => {
+    if (!newPresetName.trim()) return;
+    setPresetsLoading(true);
+    try {
+      const { data } = await api.post('/column-presets', {
+        name: newPresetName.trim(),
+        columns: visibleColumns
+      });
+      setColumnPresets([...columnPresets, data]);
+      setNewPresetName('');
+    } catch (e) {
+      console.error('Error saving preset:', e);
+      alert(e.response?.data?.error || 'Failed to save preset');
+    } finally {
+      setPresetsLoading(false);
+    }
+  };
+
+  // Load a preset
+  const loadColumnPreset = (preset) => {
+    setVisibleColumns(preset.columns);
+  };
+
+  // Delete a preset
+  const deleteColumnPreset = async (presetId) => {
+    try {
+      await api.delete(`/column-presets/${presetId}`);
+      setColumnPresets(columnPresets.filter(p => p._id !== presetId));
+    } catch (e) {
+      console.error('Error deleting preset:', e);
+    }
+  };
 
   const updateManualField = async (orderId, field, value) => {
     try {
@@ -2221,8 +2274,8 @@ function FulfillmentDashboard() {
           </Stack>
         ) : (
           /* DESKTOP LAYOUT - Original Horizontal Layout */
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-            <FormControl size="small" sx={{ minWidth: 250 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel id="seller-select-label">Select Seller</InputLabel>
               <Select
                 labelId="seller-select-label"
@@ -2247,7 +2300,7 @@ function FulfillmentDashboard() {
               startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <ShoppingCartIcon />}
               onClick={pollNewOrders}
               disabled={loading}
-              sx={{ minWidth: 180 }}
+              sx={{ minWidth: 120, fontSize: '0.85rem', px: 1 }}
             >
               {loading ? 'Polling...' : 'Poll New Orders'}
             </Button>
@@ -2258,7 +2311,7 @@ function FulfillmentDashboard() {
               startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <RefreshIcon />}
               onClick={pollOrderUpdates}
               disabled={loading}
-              sx={{ minWidth: 180 }}
+              sx={{ minWidth: 120, fontSize: '0.85rem', px: 1 }}
             >
               {loading ? 'Updating...' : 'Poll Order Updates'}
             </Button>
@@ -2271,20 +2324,21 @@ function FulfillmentDashboard() {
                   startIcon={backfillLoading ? <CircularProgress size={16} color="inherit" /> : <LocalShippingIcon />}
                   onClick={backfillAdFees}
                   disabled={backfillLoading || !selectedSeller}
-                  sx={{ minWidth: 180 }}
+                  sx={{ minWidth: 120, fontSize: '0.85rem', px: 1 }}
                 >
-                  {backfillLoading ? 'Fetching Ad Fees...' : 'Backfill Ad Fees'}
+                  {backfillLoading ? 'Fetching Fees...' : 'Backfill Fees'}
                 </Button>
               </span>
             </Tooltip>
 
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel id="marketplace-filter-label">Marketplace</InputLabel>
+            <FormControl size="small" sx={{ minWidth: 110 }}>
+              <InputLabel id="marketplace-filter-label" sx={{ fontSize: '0.75rem' }}>Marketplace</InputLabel>
               <Select
                 labelId="marketplace-filter-label"
                 value={searchMarketplace}
                 label="Marketplace"
                 onChange={(e) => setSearchMarketplace(e.target.value)}
+                sx={{ fontSize: '0.8rem', height: 32, '& .MuiSelect-select': { py: 0.5, px: 0.8 } }}
               >
                 <MenuItem value="">
                   <em>All</em>
@@ -2295,13 +2349,14 @@ function FulfillmentDashboard() {
               </Select>
             </FormControl>
 
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel id="payment-status-filter-label">Payment Status</InputLabel>
+            <FormControl size="small" sx={{ minWidth: 125 }}>
+              <InputLabel id="payment-status-filter-label" sx={{ fontSize: '0.75rem' }}>Payment Status</InputLabel>
               <Select
                 labelId="payment-status-filter-label"
                 value={searchPaymentStatus}
                 label="Payment Status"
                 onChange={(e) => setSearchPaymentStatus(e.target.value)}
+                sx={{ fontSize: '0.8rem', height: 32, '& .MuiSelect-select': { py: 0.5, px: 0.8 } }}
               >
                 <MenuItem value="">
                   <em>All</em>
@@ -2338,7 +2393,66 @@ function FulfillmentDashboard() {
             horizontal: 'right',
           }}
         >
-          <Box sx={{ p: 2, minWidth: 250 }}>
+          <Box sx={{ p: 2, minWidth: 280, maxHeight: '70vh', overflowY: 'auto' }}>
+            {/* Presets Section */}
+            {columnPresets.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+                  Saved Presets
+                </Typography>
+                <Stack spacing={0.5}>
+                  {columnPresets.map((preset) => (
+                    <Stack key={preset._id} direction="row" alignItems="center" spacing={1}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => loadColumnPreset(preset)}
+                        sx={{ flex: 1, justifyContent: 'flex-start', textTransform: 'none', fontSize: '0.8rem' }}
+                      >
+                        {preset.name}
+                      </Button>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => deleteColumnPreset(preset._id)}
+                        sx={{ p: 0.5 }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  ))}
+                </Stack>
+                <Divider sx={{ mt: 1.5 }} />
+              </Box>
+            )}
+
+            {/* Save New Preset */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+                Save Current as Preset
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  size="small"
+                  placeholder="Preset name"
+                  value={newPresetName}
+                  onChange={(e) => setNewPresetName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && saveColumnPreset()}
+                  sx={{ flex: 1, '& input': { fontSize: '0.85rem', py: 0.5 } }}
+                />
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={saveColumnPreset}
+                  disabled={!newPresetName.trim() || presetsLoading}
+                >
+                  <SaveIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+              <Divider sx={{ mt: 1.5 }} />
+            </Box>
+
+            {/* Column Selection */}
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
               Select Columns to Display
             </Typography>
