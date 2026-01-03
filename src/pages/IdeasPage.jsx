@@ -41,6 +41,11 @@ const NotesCell = memo(({ ideaId, initialNotes, onSave }) => {
   const [localNotes, setLocalNotes] = useState(initialNotes || '');
   const [isEditing, setIsEditing] = useState(false);
 
+  // Sync with parent when initialNotes changes (after optimistic update)
+  useEffect(() => {
+    setLocalNotes(initialNotes || '');
+  }, [initialNotes]);
+
   const hasChanges = localNotes !== (initialNotes || '');
 
   const handleSave = useCallback(() => {
@@ -210,33 +215,58 @@ export default function IdeasPage() {
   };
 
   const handleStatusChange = async (ideaId, newStatus) => {
+    // Optimistic update: Update UI immediately
+    setIdeas(prevIdeas => 
+      prevIdeas.map(idea => 
+        idea._id === ideaId ? { ...idea, status: newStatus } : idea
+      )
+    );
+
     try {
       await api.patch(`/ideas/${ideaId}`, { status: newStatus });
-      fetchIdeas();
+      // No need to refresh - already updated locally
     } catch (err) {
       console.error('Error updating status:', err);
+      // Rollback: Refresh on error to restore correct state
+      fetchIdeas();
       alert('Failed to update status');
     }
   };
 
   const handlePickedUpByChange = async (ideaId, newPickedUpBy) => {
+    // Optimistic update: Update UI immediately
+    setIdeas(prevIdeas => 
+      prevIdeas.map(idea => 
+        idea._id === ideaId ? { ...idea, pickedUpBy: newPickedUpBy } : idea
+      )
+    );
+
     try {
-      console.log('Updating pickedUpBy:', { ideaId, newPickedUpBy });
-      const response = await api.patch(`/ideas/${ideaId}`, { pickedUpBy: newPickedUpBy });
-      console.log('Update response:', response.data);
-      fetchIdeas();
+      await api.patch(`/ideas/${ideaId}`, { pickedUpBy: newPickedUpBy });
+      // No need to refresh - already updated locally
     } catch (err) {
       console.error('Error updating picked up by:', err);
+      // Rollback: Refresh on error to restore correct state
+      fetchIdeas();
       alert('Failed to update picked up by');
     }
   };
 
   const handleNotesChange = useCallback(async (ideaId, notes) => {
+    // Optimistic update: Update UI immediately
+    setIdeas(prevIdeas => 
+      prevIdeas.map(idea => 
+        idea._id === ideaId ? { ...idea, notes } : idea
+      )
+    );
+
     try {
       await api.patch(`/ideas/${ideaId}`, { notes });
-      fetchIdeas();
+      // No need to refresh - already updated locally
     } catch (err) {
       console.error('Error updating notes:', err);
+      // Rollback: Refresh on error to restore correct state
+      fetchIdeas();
       alert('Failed to update notes');
     }
   }, []);
@@ -246,11 +276,17 @@ export default function IdeasPage() {
       return;
     }
     
+    // Optimistic removal: Remove from UI immediately
+    setIdeas(prevIdeas => prevIdeas.filter(idea => idea._id !== ideaId));
+    setTotal(prevTotal => prevTotal - 1);
+
     try {
       await api.delete(`/ideas/${ideaId}`);
-      fetchIdeas();
+      // No need to refresh - already removed locally
     } catch (err) {
       console.error('Error deleting idea:', err);
+      // Rollback: Refresh on error to restore correct state
+      fetchIdeas();
       alert('Failed to delete idea');
     }
   };
