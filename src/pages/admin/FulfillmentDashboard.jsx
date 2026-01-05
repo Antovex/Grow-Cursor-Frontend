@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, memo } from 'react';
+import React, { useEffect, useState, useRef, memo, useCallback } from 'react';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
 import {
@@ -904,8 +904,8 @@ function FulfillmentDashboard() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [ordersPerPage] = useState(50);
 
-  // Expanded shipping addresses
-  const [expandedShipping, setExpandedShipping] = useState({});
+  // Expanded shipping address - only one can be expanded at a time (accordion behavior)
+  const [expandedShippingId, setExpandedShippingId] = useState(null);
 
   // Editing messaging status
   const [editingMessagingStatus, setEditingMessagingStatus] = useState({});
@@ -1684,7 +1684,7 @@ function FulfillmentDashboard() {
     }
   }
 
-  const handleCopy = (text) => {
+  const handleCopy = useCallback((text) => {
     const val = text || '-';
     if (val === '-') return;
     if (navigator?.clipboard?.writeText) {
@@ -1692,7 +1692,7 @@ function FulfillmentDashboard() {
       setCopiedText(val);
       setTimeout(() => setCopiedText(''), 1200);
     }
-  };
+  }, []);
 
   // Handle Amazon refund received - zero out Amazon costs
   const handleAmazonRefundReceived = async (order) => {
@@ -1840,12 +1840,10 @@ function FulfillmentDashboard() {
     updateItemStatus(orderId, newStatus);
   };
 
-  const toggleShippingExpanded = (orderId) => {
-    setExpandedShipping(prev => ({
-      ...prev,
-      [orderId]: !prev[orderId]
-    }));
-  };
+  const toggleShippingExpanded = useCallback((orderId) => {
+    // If clicking same order, collapse it; otherwise expand new one
+    setExpandedShippingId(prev => prev === orderId ? null : orderId);
+  }, []);
 
   // helpers
   const formatDate = (dateStr, marketplaceId) => {
@@ -2960,7 +2958,7 @@ function FulfillmentDashboard() {
                     )}
                     {visibleColumns.includes('shippingAddress') && (
                       <TableCell sx={{ maxWidth: 300 }}>
-                        {expandedShipping[order._id] ? (
+                        <Collapse in={expandedShippingId === order._id} timeout="auto">
                           <Stack spacing={0.5}>
                             {/* Full Name */}
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -3060,7 +3058,8 @@ function FulfillmentDashboard() {
                               Collapse
                             </Button>
                           </Stack>
-                        ) : (
+                        </Collapse>
+                        <Collapse in={expandedShippingId !== order._id} timeout="auto">
                           <Button
                             size="small"
                             onClick={() => toggleShippingExpanded(order._id)}
@@ -3069,7 +3068,7 @@ function FulfillmentDashboard() {
                           >
                             {order.shippingFullName || 'View Address'}
                           </Button>
-                        )}
+                        </Collapse>
                       </TableCell>
                     )}
                     {visibleColumns.includes('marketplace') && (

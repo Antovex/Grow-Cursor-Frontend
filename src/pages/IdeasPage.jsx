@@ -22,7 +22,6 @@ import {
   Select,
   MenuItem,
   IconButton,
-  Collapse,
   Alert,
   CircularProgress,
   Pagination,
@@ -30,8 +29,6 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -148,7 +145,6 @@ export default function IdeasPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedIdea, setSelectedIdea] = useState(null);
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -361,17 +357,11 @@ export default function IdeasPage() {
 
       {/* Filters */}
       <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 2 }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }}>
-            Search Filters
-          </Typography>
-          <IconButton onClick={() => setFiltersExpanded(!filtersExpanded)} size={isSmallMobile ? 'small' : 'medium'}>
-            {filtersExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </IconButton>
-        </Box>
+        <Typography variant="subtitle1" fontWeight="bold" sx={{ fontSize: { xs: '0.95rem', sm: '1rem' }, mb: { xs: 1.5, sm: 2 } }}>
+          Search Filters
+        </Typography>
         
-        <Collapse in={filtersExpanded}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1.5, sm: 2 }} mt={{ xs: 1.5, sm: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1.5, sm: 2 }}>
             <FormControl size="small" sx={{ minWidth: { xs: 'auto', sm: 150 }, flex: { xs: 1, sm: 'none' } }}>
               <InputLabel>Status</InputLabel>
               <Select
@@ -427,8 +417,7 @@ export default function IdeasPage() {
               </Select>
             </FormControl>
           </Stack>
-        </Collapse>
-      </Paper>
+        </Paper>
 
       {/* Ideas Table */}
       <TableContainer component={Paper} sx={{ overflowX: 'hidden' }}>

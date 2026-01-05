@@ -92,7 +92,6 @@ export default function BuyerChatPage() {
       selectedThread,
       searchQuery,
       selectedSeller,
-      selectedSeller,
       filterType,
       filterMarketplace,
       showUnreadOnly
@@ -317,7 +316,6 @@ export default function BuyerChatPage() {
       const params = {
         page: currentPage,
         limit: 50,
-        search: searchQuery,
         search: searchQuery,
         filterType: filterType,
         filterMarketplace: filterMarketplace,
