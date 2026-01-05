@@ -307,8 +307,11 @@ export default function DisputesPage() {
   const getCaseStatusColor = (status) => {
     if (!status) return 'default';
     const s = status.toUpperCase();
-    if (s === 'OPEN' || s === 'WAITING_FOR_SELLER') return 'warning';
-    if (s === 'ON_HOLD' || s === 'UNDER_REVIEW') return 'info';
+    // Open/Waiting statuses - warning (yellow/orange)
+    if (s === 'OPEN' || s === 'WAITING_FOR_SELLER' || s === 'WAITING_SELLER_RESPONSE') return 'warning';
+    // Waiting for buyer - info (blue) - we're good, waiting on them
+    if (s === 'WAITING_BUYER_RESPONSE' || s === 'ON_HOLD' || s === 'UNDER_REVIEW') return 'info';
+    // Closed - success (green)
     if (s === 'CLOSED') return 'success';
     return 'default';
   };
