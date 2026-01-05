@@ -51,6 +51,7 @@ export default function BuyerChatPage() {
   const [selectedSeller, setSelectedSeller] = useState(() => getInitialState('selectedSeller', ''));
   const [filterType, setFilterType] = useState(() => getInitialState('filterType', 'ALL'));
   const [filterMarketplace, setFilterMarketplace] = useState(() => getInitialState('filterMarketplace', ''));
+  const [showUnreadOnly, setShowUnreadOnly] = useState(() => getInitialState('showUnreadOnly', false));
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingThreads, setLoadingThreads] = useState(false);
@@ -93,7 +94,8 @@ export default function BuyerChatPage() {
       selectedSeller,
       selectedSeller,
       filterType,
-      filterMarketplace
+      filterMarketplace,
+      showUnreadOnly
     };
     try {
       sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(stateToSave));
@@ -194,6 +196,7 @@ export default function BuyerChatPage() {
   const prevSelectedSeller = useRef(selectedSeller);
   const prevFilterType = useRef(filterType);
   const prevFilterMarketplace = useRef(filterMarketplace);
+  const prevShowUnreadOnly = useRef(showUnreadOnly);
   const isFirstRender = useRef(true);
 
   useEffect(() => {
@@ -204,11 +207,12 @@ export default function BuyerChatPage() {
     }
 
     // Only reload if values actually changed
-    if (prevSearchQuery.current !== searchQuery || prevSelectedSeller.current !== selectedSeller || prevFilterType.current !== filterType || prevFilterMarketplace.current !== filterMarketplace) {
+    if (prevSearchQuery.current !== searchQuery || prevSelectedSeller.current !== selectedSeller || prevFilterType.current !== filterType || prevFilterMarketplace.current !== filterMarketplace || prevShowUnreadOnly.current !== showUnreadOnly) {
       prevSearchQuery.current = searchQuery;
       prevSelectedSeller.current = selectedSeller;
       prevFilterType.current = filterType;
       prevFilterMarketplace.current = filterMarketplace;
+      prevShowUnreadOnly.current = showUnreadOnly;
 
       const delayDebounceFn = setTimeout(() => {
         setPage(1);
@@ -217,7 +221,7 @@ export default function BuyerChatPage() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [searchQuery, selectedSeller, filterType, filterMarketplace]);
+  }, [searchQuery, selectedSeller, filterType, filterMarketplace, showUnreadOnly]);
 
   // 2. Scroll Effect
   useEffect(() => {
@@ -316,7 +320,8 @@ export default function BuyerChatPage() {
         search: searchQuery,
         search: searchQuery,
         filterType: filterType,
-        filterMarketplace: filterMarketplace
+        filterMarketplace: filterMarketplace,
+        showUnreadOnly: showUnreadOnly
       };
 
       if (selectedSeller) params.sellerId = selectedSeller;
@@ -586,6 +591,19 @@ export default function BuyerChatPage() {
               <MenuItem value="EBAY_CA">Canada (CA)</MenuItem>
               <MenuItem value="EBAY_AU">Australia (AU)</MenuItem>
               {/* Add more as needed */}
+            </Select>
+          </FormControl>
+
+          {/* UNREAD MESSAGES FILTER */}
+          <FormControl fullWidth size="small" sx={{ mb: 2, bgcolor: 'white' }}>
+            <InputLabel>Show Only</InputLabel>
+            <Select
+              value={showUnreadOnly}
+              label="Show Only"
+              onChange={(e) => setShowUnreadOnly(e.target.value)}
+            >
+              <MenuItem value={false}>All Conversations</MenuItem>
+              <MenuItem value={true}>Unread Messages Only</MenuItem>
             </Select>
           </FormControl>
 
