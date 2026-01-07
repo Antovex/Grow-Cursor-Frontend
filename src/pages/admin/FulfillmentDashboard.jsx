@@ -3761,6 +3761,7 @@ function AutoSaveDatePicker({ value, onSave, sx = {} }) {
       <DatePicker
         value={localValue}
         onChange={handleChange}
+        format="dd/MM/yyyy"
         slotProps={{
           textField: {
             size: 'small',
