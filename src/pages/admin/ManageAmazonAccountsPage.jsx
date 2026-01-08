@@ -6,8 +6,6 @@ import {
   IconButton, Alert, Collapse, Grid
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import api from '../../lib/api.js';
@@ -149,16 +147,14 @@ export default function ManageAmazonAccountsPage() {
           <TableBody>
             {accounts.map((acc) => (
               <>
-                <TableRow key={acc._id} hover>
+                <TableRow 
+                  key={acc._id} 
+                  hover
+                  onClick={() => handleExpandRow(acc._id)}
+                  sx={{ cursor: 'pointer' }}
+                >
                   <TableCell>{acc.name}</TableCell>
-                  <TableCell>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleExpandRow(acc._id)}
-                      aria-label="expand row"
-                    >
-                      {expandedId === acc._id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                    </IconButton>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <IconButton size="small" color="error" onClick={() => deleteAccount(acc._id)}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
