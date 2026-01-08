@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import {
   Box, Paper, Typography, List, ListItem, ListItemButton, ListItemText, ListItemAvatar,
   Avatar, TextField, IconButton, Stack, CircularProgress, Badge, Divider, Chip,
-  Button, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, Alert
+  Button, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, Alert,
+  useTheme, useMediaQuery
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SearchIcon from '@mui/icons-material/Search';
@@ -37,6 +38,29 @@ export default function InternalMessagesPage() {
   // Refs
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
+
+  // Responsive hooks (match BuyerChatPage behavior)
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md')); // 600px - 960px
+  const isDesktop = !isMobile && !isTablet;
+  const [sidebarOpen, setSidebarOpen] = useState(isDesktop);
+  const prevIsDesktopRef = useRef(null);
+
+  // Sync sidebar state with breakpoints - closed on mobile/tablet, open on desktop
+  useEffect(() => {
+    if (prevIsDesktopRef.current === null || prevIsDesktopRef.current !== isDesktop) {
+      setSidebarOpen(isDesktop);
+      prevIsDesktopRef.current = isDesktop;
+    }
+  }, [isDesktop]);
+
+  // On tablet, keep sidebar closed when viewing a chat
+  useEffect(() => {
+    if (isTablet && selectedConversation) {
+      setSidebarOpen(false);
+    }
+  }, [isTablet, selectedConversation]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -103,6 +127,10 @@ export default function InternalMessagesPage() {
 
   async function handleConversationSelect(conversation) {
     setSelectedConversation(conversation);
+    // Close sidebar on mobile and tablet when conversation is selected
+    if (isMobile || isTablet) {
+      setSidebarOpen(false);
+    }
     await loadMessages(conversation.conversationId);
   }
 
@@ -219,12 +247,59 @@ export default function InternalMessagesPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', height: '85vh', gap: 2 }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: { xs: 'column', md: 'row' },
+      height: { xs: '100vh', md: '85vh' },
+      gap: { xs: 0, md: 2 },
+      position: 'relative'
+    }}>
+
+      {/* Mobile & Tablet: Backdrop overlay when sidebar is open */}
+      {(isMobile || isTablet) && sidebarOpen && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1500,
+            display: { xs: 'block', sm: 'block', md: 'none' }
+          }}
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       
       {/* LEFT SIDEBAR: Conversations List */}
-      <Paper sx={{ width: 340, display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: 1, borderColor: 'divider' }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>Team Chat</Typography>
+      <Paper sx={{ 
+        width: { xs: '100%', sm: sidebarOpen ? '100%' : 0, md: 340 },
+        display: { xs: sidebarOpen ? 'flex' : 'none', sm: sidebarOpen ? 'flex' : 'none', md: 'flex' },
+        flexDirection: 'column',
+        height: { xs: '100%', sm: '100%', md: '100%' },
+        position: { xs: 'fixed', sm: 'fixed', md: 'relative' },
+        top: { xs: 0, sm: 0, md: 'auto' },
+        left: { xs: 0, sm: 0, md: 'auto' },
+        zIndex: { xs: 1600, sm: 1600, md: 1 },
+        overflow: 'hidden',
+        boxShadow: { xs: 3, sm: 3, md: 1 }
+      }}>
+        <Box sx={{ p: { xs: 1.5, md: 2 }, bgcolor: '#f5f5f5', borderBottom: 1, borderColor: 'divider' }}>
+          {/* Mobile & Tablet: Close button */}
+          {(isMobile || isTablet) && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+              <Typography variant="h6" sx={{ fontSize: '1rem' }}>Team Chat</Typography>
+              <IconButton 
+                onClick={() => setSidebarOpen(false)}
+                size="small"
+              >
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          )}
+
+          {!isMobile && <Typography variant="h6" sx={{ mb: 1 }}>Team Chat</Typography>}
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -290,13 +365,45 @@ export default function InternalMessagesPage() {
         </List>
       </Paper>
 
+      {/* Button to open sidebar when closed */}
+      {!sidebarOpen && !selectedConversation && (
+        <Box sx={{ p: 2, width: '100%' }}>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={() => setSidebarOpen(true)}
+          >
+            View Conversations
+          </Button>
+        </Box>
+      )}
+
       {/* RIGHT: Chat Area */}
-      <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <Paper sx={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        width: { xs: '100%', md: 'auto' },
+        height: { xs: '100vh', md: '100%' },
+        minWidth: 0
+      }}>
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: 1, borderColor: 'divider' }}>
+            <Box sx={{ p: { xs: 1.5, md: 2 }, bgcolor: '#f5f5f5', borderBottom: 1, borderColor: 'divider' }}>
               <Stack direction="row" alignItems="center" spacing={2}>
+                {/* Mobile & Tablet: Back button */}
+                {(isMobile || isTablet) && (
+                  <IconButton
+                    onClick={() => {
+                      setSelectedConversation(null);
+                      setSidebarOpen(true);
+                    }}
+                    size="small"
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                )}
                 <Avatar sx={{ bgcolor: 'primary.main' }}>
                   <PersonIcon />
                 </Avatar>
@@ -335,7 +442,7 @@ export default function InternalMessagesPage() {
                         key={msg._id}
                         sx={{
                           alignSelf: isMe ? 'flex-end' : 'flex-start',
-                          maxWidth: '70%'
+                          maxWidth: { xs: '85%', sm: '75%', md: '70%' }
                         }}
                       >
                         <Paper
@@ -456,7 +563,7 @@ export default function InternalMessagesPage() {
               color: 'text.secondary'
             }}
           >
-            <Typography variant="h6">Select a conversation to start chatting</Typography>
+            <Typography variant="h6">{isMobile ? 'Select a conversation' : 'Select a conversation to start chatting'}</Typography>
           </Box>
         )}
       </Paper>

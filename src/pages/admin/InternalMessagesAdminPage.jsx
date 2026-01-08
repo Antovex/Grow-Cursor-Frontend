@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Box, Paper, Typography, List, ListItem, ListItemButton, ListItemText,
   Stack, CircularProgress, Chip, Divider, TextField, InputAdornment,
-  Alert, Avatar, ListItemAvatar
+  Alert, Avatar, ListItemAvatar, IconButton, Button,
+  useTheme, useMediaQuery
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PeopleIcon from '@mui/icons-material/People';
 import MessageIcon from '@mui/icons-material/Message';
+import CloseIcon from '@mui/icons-material/Close';
 import api from '../../lib/api.js';
 
 export default function InternalMessagesAdminPage() {
@@ -17,6 +19,29 @@ export default function InternalMessagesAdminPage() {
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Responsive hooks (match BuyerChatPage behavior)
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md')); // 600px - 960px
+  const isDesktop = !isMobile && !isTablet;
+  const [sidebarOpen, setSidebarOpen] = useState(isDesktop);
+  const prevIsDesktopRef = useRef(null);
+
+  // Sync sidebar state with breakpoints - closed on mobile/tablet, open on desktop
+  useEffect(() => {
+    if (prevIsDesktopRef.current === null || prevIsDesktopRef.current !== isDesktop) {
+      setSidebarOpen(isDesktop);
+      prevIsDesktopRef.current = isDesktop;
+    }
+  }, [isDesktop]);
+
+  // On tablet, keep sidebar closed when viewing a conversation
+  useEffect(() => {
+    if (isTablet && selectedConversation) {
+      setSidebarOpen(false);
+    }
+  }, [isTablet, selectedConversation]);
 
   useEffect(() => {
     loadAllConversations();
@@ -58,6 +83,10 @@ export default function InternalMessagesAdminPage() {
 
   async function handleConversationSelect(conversation) {
     setSelectedConversation(conversation);
+    // Close sidebar on mobile/tablet when a conversation is selected
+    if (isMobile || isTablet) {
+      setSidebarOpen(false);
+    }
     await loadConversation(conversation.conversationId);
   }
 
@@ -78,12 +107,59 @@ export default function InternalMessagesAdminPage() {
         </Stack>
       </Paper>
 
-      <Box sx={{ display: 'flex', height: '75vh', gap: 2 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', md: 'row' },
+        height: { xs: '100vh', md: '75vh' },
+        gap: { xs: 0, md: 2 },
+        position: 'relative'
+      }}>
+
+        {/* Mobile & Tablet: Backdrop overlay when sidebar is open */}
+        {(isMobile || isTablet) && sidebarOpen && (
+          <Box
+            sx={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              bgcolor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1500,
+              display: { xs: 'block', sm: 'block', md: 'none' }
+            }}
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
         
         {/* LEFT SIDEBAR: All Conversations */}
-        <Paper sx={{ width: 380, display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: 1, borderColor: 'divider' }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>All Conversations</Typography>
+        <Paper sx={{ 
+          width: { xs: '100%', sm: sidebarOpen ? '100%' : 0, md: 380 },
+          display: { xs: sidebarOpen ? 'flex' : 'none', sm: sidebarOpen ? 'flex' : 'none', md: 'flex' },
+          flexDirection: 'column',
+          height: { xs: '100%', sm: '100%', md: '100%' },
+          position: { xs: 'fixed', sm: 'fixed', md: 'relative' },
+          top: { xs: 0, sm: 0, md: 'auto' },
+          left: { xs: 0, sm: 0, md: 'auto' },
+          zIndex: { xs: 1600, sm: 1600, md: 1 },
+          overflow: 'hidden',
+          boxShadow: { xs: 3, sm: 3, md: 1 }
+        }}>
+          <Box sx={{ p: { xs: 1.5, md: 2 }, bgcolor: '#f5f5f5', borderBottom: 1, borderColor: 'divider' }}>
+            {/* Mobile & Tablet: Close button */}
+            {(isMobile || isTablet) && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography variant="h6" sx={{ fontSize: '1rem' }}>All Conversations</Typography>
+                <IconButton 
+                  onClick={() => setSidebarOpen(false)}
+                  size="small"
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+            )}
+
+            {!isMobile && <Typography variant="h6" sx={{ mb: 2 }}>All Conversations</Typography>}
             <TextField
               fullWidth
               size="small"
@@ -160,8 +236,28 @@ export default function InternalMessagesAdminPage() {
           </List>
         </Paper>
 
+        {/* Button to open sidebar when closed */}
+        {!sidebarOpen && !selectedConversation && (
+          <Box sx={{ p: 2, width: '100%' }}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={() => setSidebarOpen(true)}
+            >
+              View Conversations
+            </Button>
+          </Box>
+        )}
+
         {/* RIGHT: Messages View (Read-Only) */}
-        <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Paper sx={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column',
+          width: { xs: '100%', md: 'auto' },
+          height: { xs: '100vh', md: '100%' },
+          minWidth: 0
+        }}>
           {selectedConversation ? (
             <>
               {/* Header */}
@@ -170,6 +266,18 @@ export default function InternalMessagesAdminPage() {
                   <strong>Read-Only Mode:</strong> You are viewing this conversation as an administrator. You cannot send messages.
                 </Alert>
                 <Stack direction="row" alignItems="center" spacing={2}>
+                  {/* Mobile & Tablet: Back button */}
+                  {(isMobile || isTablet) && (
+                    <IconButton
+                      onClick={() => {
+                        setSelectedConversation(null);
+                        setSidebarOpen(true);
+                      }}
+                      size="small"
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  )}
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
                       {selectedConversation.user1.username[0].toUpperCase()}
@@ -233,7 +341,7 @@ export default function InternalMessagesAdminPage() {
                           key={msg._id}
                           sx={{
                             alignSelf: isUser1 ? 'flex-start' : 'flex-end',
-                            maxWidth: '70%'
+                            maxWidth: { xs: '85%', sm: '75%', md: '70%' }
                           }}
                         >
                           <Stack spacing={0.5}>
