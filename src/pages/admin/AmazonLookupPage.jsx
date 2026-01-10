@@ -19,7 +19,7 @@ export default function AmazonLookupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [exportingCSV, setExportingCSV] = useState(false);
-  
+
   const [sellers, setSellers] = useState([]);
   const [selectedSeller, setSelectedSeller] = useState('');
   const [umbrellas, setUmbrellas] = useState([]);
@@ -27,7 +27,7 @@ export default function AmazonLookupPage() {
   const [savedProducts, setSavedProducts] = useState([]);
   const [customColumnNames, setCustomColumnNames] = useState([]);
   const [showArchived, setShowArchived] = useState(false);
-  
+
   // Table filters
   const [filterSeller, setFilterSeller] = useState('');
   const [filterUmbrella, setFilterUmbrella] = useState('');
@@ -72,7 +72,7 @@ export default function AmazonLookupPage() {
       const params = showArchived ? { includeDeleted: 'true' } : {};
       if (filterSeller) params.sellerId = filterSeller;
       if (filterUmbrella) params.productUmbrellaId = filterUmbrella;
-      
+
       const { data } = await api.get('/amazon-lookup', { params });
       setSavedProducts(data || []);
     } catch (err) {
@@ -93,30 +93,44 @@ export default function AmazonLookupPage() {
     try {
       // Split ASINs by space and filter empty strings
       const asinList = asins.trim().split(/\s+/).filter(Boolean);
-      
+
       let successCount = 0;
       let duplicateCount = 0;
       const failedAsins = [];
-      
-      // Process each ASIN
-      for (const asin of asinList) {
-        try {
-          await api.post('/amazon-lookup', {
+
+      // Process ALL ASINs in parallel for much faster batch operations
+      const results = await Promise.all(
+        asinList.map(asin =>
+          api.post('/amazon-lookup', {
             asin: asin.trim(),
             sellerId: selectedSeller,
             productUmbrellaId: selectedUmbrella
-          });
+          })
+            .then(() => ({ success: true, asin: asin.trim() }))
+            .catch(err => ({
+              success: false,
+              asin: asin.trim(),
+              error: err,
+              status: err.response?.status
+            }))
+        )
+      );
+
+      // Count results
+      results.forEach(result => {
+        if (result.success) {
           successCount++;
-        } catch (err) {
-          if (err.response?.status === 409) {
-            // Duplicate detected
-            duplicateCount++;
-          } else {
-            failedAsins.push({ asin: asin.trim(), error: err.response?.data?.error || 'Failed' });
-          }
+        } else if (result.status === 409) {
+          // Duplicate detected
+          duplicateCount++;
+        } else {
+          failedAsins.push({
+            asin: result.asin,
+            error: result.error.response?.data?.error || 'Failed'
+          });
         }
-      }
-      
+      });
+
       // Build success message
       let message = '';
       if (successCount > 0) {
@@ -128,11 +142,11 @@ export default function AmazonLookupPage() {
       if (failedAsins.length > 0) {
         message += `✗ ${failedAsins.length} failed: ${failedAsins.map(f => f.asin).join(', ')}`;
       }
-      
+
       if (message) {
         setError(message);
       }
-      
+
       setAsins('');
       fetchSavedProducts();
     } catch (err) {
@@ -201,7 +215,7 @@ export default function AmazonLookupPage() {
 
       // Generate CSV rows
       const rows = savedProducts.map(product => {
-        const customFieldValues = customColumnNames.map(columnName => 
+        const customFieldValues = customColumnNames.map(columnName =>
           product.customFields?.[columnName] || ''
         );
 
@@ -230,16 +244,16 @@ export default function AmazonLookupPage() {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-      
+
       link.setAttribute('href', url);
       const fileName = `amazon_products_${new Date().toISOString().split('T')[0]}.csv`;
       link.setAttribute('download', fileName);
       link.style.visibility = 'hidden';
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
     } catch (error) {
       console.error('Error exporting CSV:', error);
       alert('Failed to export CSV');
@@ -258,15 +272,15 @@ export default function AmazonLookupPage() {
   return (
     <Box>
       <Typography variant="h6" sx={{ mb: 2 }}>Amazon Product Lookup</Typography>
-      
+
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack spacing={2} component="form" onSubmit={handleLookup}>
           <Stack direction="row" spacing={2}>
             <FormControl sx={{ flex: 1 }} required>
               <InputLabel>Select Seller</InputLabel>
-              <Select 
-                label="Select Seller" 
-                value={selectedSeller} 
+              <Select
+                label="Select Seller"
+                value={selectedSeller}
                 onChange={(e) => setSelectedSeller(e.target.value)}
               >
                 {sellers.map((seller) => (
@@ -276,12 +290,12 @@ export default function AmazonLookupPage() {
                 ))}
               </Select>
             </FormControl>
-            
+
             <FormControl sx={{ flex: 1 }} required>
               <InputLabel>Product Umbrella</InputLabel>
-              <Select 
-                label="Product Umbrella" 
-                value={selectedUmbrella} 
+              <Select
+                label="Product Umbrella"
+                value={selectedUmbrella}
                 onChange={(e) => setSelectedUmbrella(e.target.value)}
               >
                 {umbrellas.map((umbrella) => (
@@ -294,17 +308,17 @@ export default function AmazonLookupPage() {
           </Stack>
 
           <Stack direction="row" spacing={2}>
-            <TextField 
-              label="ASIN(s) - Separate multiple with spaces" 
-              value={asins} 
-              onChange={(e) => setAsins(e.target.value)} 
+            <TextField
+              label="ASIN(s) - Separate multiple with spaces"
+              value={asins}
+              onChange={(e) => setAsins(e.target.value)}
               placeholder="e.g., B08N5WRWNW B0CGV192GK"
-              required 
+              required
               sx={{ flex: 1 }}
             />
-            <Button 
-              type="submit" 
-              variant="contained" 
+            <Button
+              type="submit"
+              variant="contained"
               disabled={loading || !selectedSeller || !selectedUmbrella}
               sx={{ minWidth: 120 }}
             >
@@ -313,12 +327,12 @@ export default function AmazonLookupPage() {
           </Stack>
 
           {error && (
-            <Paper sx={{ 
-              p: 2, 
-              bgcolor: error.startsWith('✓') || error.includes('added successfully') ? 'success.light' : 
-                       error.startsWith('⚠') ? 'warning.light' : 'error.light',
-              color: error.startsWith('✓') || error.includes('added successfully') ? 'success.contrastText' : 
-                     error.startsWith('⚠') ? 'warning.contrastText' : 'error.contrastText'
+            <Paper sx={{
+              p: 2,
+              bgcolor: error.startsWith('✓') || error.includes('added successfully') ? 'success.light' :
+                error.startsWith('⚠') ? 'warning.light' : 'error.light',
+              color: error.startsWith('✓') || error.includes('added successfully') ? 'success.contrastText' :
+                error.startsWith('⚠') ? 'warning.contrastText' : 'error.contrastText'
             }}>
               {error}
             </Paper>
@@ -356,9 +370,9 @@ export default function AmazonLookupPage() {
           <Typography variant="subtitle2" sx={{ minWidth: 80 }}>Filters:</Typography>
           <FormControl sx={{ minWidth: 200 }} size="small">
             <InputLabel>Filter by Seller</InputLabel>
-            <Select 
-              label="Filter by Seller" 
-              value={filterSeller} 
+            <Select
+              label="Filter by Seller"
+              value={filterSeller}
               onChange={(e) => setFilterSeller(e.target.value)}
             >
               <MenuItem value="">All Sellers</MenuItem>
@@ -369,12 +383,12 @@ export default function AmazonLookupPage() {
               ))}
             </Select>
           </FormControl>
-          
+
           <FormControl sx={{ minWidth: 200 }} size="small">
             <InputLabel>Filter by Umbrella</InputLabel>
-            <Select 
-              label="Filter by Umbrella" 
-              value={filterUmbrella} 
+            <Select
+              label="Filter by Umbrella"
+              value={filterUmbrella}
               onChange={(e) => setFilterUmbrella(e.target.value)}
             >
               <MenuItem value="">All Umbrellas</MenuItem>
@@ -387,8 +401,8 @@ export default function AmazonLookupPage() {
           </FormControl>
 
           {(filterSeller || filterUmbrella) && (
-            <Button 
-              size="small" 
+            <Button
+              size="small"
               onClick={() => {
                 setFilterSeller('');
                 setFilterUmbrella('');
@@ -410,14 +424,14 @@ export default function AmazonLookupPage() {
               <TableCell sx={{ fontWeight: 'bold', width: 120, bgcolor: 'grey.100' }}>Brand</TableCell>
               <TableCell sx={{ fontWeight: 'bold', width: 120, bgcolor: 'grey.100' }}>Seller</TableCell>
               <TableCell sx={{ fontWeight: 'bold', width: 120, bgcolor: 'grey.100' }}>Umbrella</TableCell>
-              
+
               {/* Dynamic custom columns */}
               {customColumnNames.map((columnName) => (
                 <TableCell key={columnName} sx={{ fontWeight: 'bold', minWidth: 200, bgcolor: 'grey.100' }}>
                   {columnName}
                 </TableCell>
               ))}
-              
+
               <TableCell sx={{ fontWeight: 'bold', minWidth: 200, bgcolor: 'grey.100' }}>Description</TableCell>
               <TableCell sx={{ fontWeight: 'bold', width: 100, bgcolor: 'grey.100' }}>Images</TableCell>
               <TableCell sx={{ fontWeight: 'bold', width: 100, bgcolor: 'grey.100' }}>eBay Image</TableCell>
@@ -434,7 +448,7 @@ export default function AmazonLookupPage() {
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2" sx={{ 
+                  <Typography variant="body2" sx={{
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     display: '-webkit-box',
@@ -461,14 +475,14 @@ export default function AmazonLookupPage() {
                 <TableCell>
                   <Typography variant="body2">{product.productUmbrellaId?.name || 'N/A'}</Typography>
                 </TableCell>
-                
+
                 {/* Dynamic custom field columns */}
                 {customColumnNames.map((columnName) => (
                   <TableCell key={columnName}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       title={product.customFields?.[columnName] || '-'}
-                      sx={{ 
+                      sx={{
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         display: '-webkit-box',
@@ -485,12 +499,12 @@ export default function AmazonLookupPage() {
                     </Typography>
                   </TableCell>
                 ))}
-                
+
                 <TableCell>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     title={product.description}
-                    sx={{ 
+                    sx={{
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       display: '-webkit-box',
@@ -558,8 +572,8 @@ export default function AmazonLookupPage() {
                     // Archived products: show restore and permanent delete
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
                       <Tooltip title="Restore">
-                        <IconButton 
-                          size="small" 
+                        <IconButton
+                          size="small"
                           color="success"
                           onClick={() => handleRestoreProduct(product._id, product.asin)}
                         >
@@ -567,8 +581,8 @@ export default function AmazonLookupPage() {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete Permanently">
-                        <IconButton 
-                          size="small" 
+                        <IconButton
+                          size="small"
                           color="error"
                           onClick={() => handlePermanentDelete(product._id, product.asin)}
                         >
@@ -579,8 +593,8 @@ export default function AmazonLookupPage() {
                   ) : (
                     // Active products: show archive button
                     <Tooltip title="Archive">
-                      <IconButton 
-                        size="small" 
+                      <IconButton
+                        size="small"
                         color="warning"
                         onClick={() => handleDeleteProduct(product._id, product.asin)}
                       >
@@ -594,8 +608,8 @@ export default function AmazonLookupPage() {
             {savedProducts.length === 0 && (
               <TableRow>
                 <TableCell colSpan={11 + customColumnNames.length} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                  {showArchived 
-                    ? 'No archived products. Archived products will appear here.' 
+                  {showArchived
+                    ? 'No archived products. Archived products will appear here.'
                     : 'No saved products yet. Add your first product above!'}
                 </TableCell>
               </TableRow>
