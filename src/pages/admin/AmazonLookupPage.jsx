@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, FormControl, InputLabel, MenuItem, Paper, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton } from '@mui/material';
+import { Box, Button, FormControl, InputLabel, MenuItem, Paper, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Tooltip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
+import RestoreIcon from '@mui/icons-material/Restore';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import api from '../../lib/api';
 
 // Helper function to construct static file URLs
@@ -24,12 +26,17 @@ export default function AmazonLookupPage() {
   const [selectedUmbrella, setSelectedUmbrella] = useState('');
   const [savedProducts, setSavedProducts] = useState([]);
   const [customColumnNames, setCustomColumnNames] = useState([]);
+  const [showArchived, setShowArchived] = useState(false);
+  
+  // Table filters
+  const [filterSeller, setFilterSeller] = useState('');
+  const [filterUmbrella, setFilterUmbrella] = useState('');
 
   useEffect(() => {
     fetchSellers();
     fetchUmbrellas();
     fetchSavedProducts();
-  }, []);
+  }, [showArchived, filterSeller, filterUmbrella]);
 
   useEffect(() => {
     // Extract unique custom column names from all products
@@ -62,7 +69,11 @@ export default function AmazonLookupPage() {
 
   const fetchSavedProducts = async () => {
     try {
-      const { data } = await api.get('/amazon-lookup');
+      const params = showArchived ? { includeDeleted: 'true' } : {};
+      if (filterSeller) params.sellerId = filterSeller;
+      if (filterUmbrella) params.productUmbrellaId = filterUmbrella;
+      
+      const { data } = await api.get('/amazon-lookup', { params });
       setSavedProducts(data || []);
     } catch (err) {
       console.error('Error fetching saved products:', err);
@@ -132,13 +143,35 @@ export default function AmazonLookupPage() {
   };
 
   const handleDeleteProduct = async (productId, asin) => {
-    if (!confirm(`Are you sure you want to delete product ${asin}?`)) return;
+    if (!confirm(`Are you sure you want to archive product ${asin}?`)) return;
 
     try {
       await api.delete(`/amazon-lookup/${productId}`);
       fetchSavedProducts();
     } catch (err) {
-      alert('Failed to delete product');
+      alert('Failed to archive product');
+    }
+  };
+
+  const handleRestoreProduct = async (productId, asin) => {
+    if (!confirm(`Restore product ${asin}?`)) return;
+
+    try {
+      await api.patch(`/amazon-lookup/${productId}/restore`);
+      fetchSavedProducts();
+    } catch (err) {
+      alert('Failed to restore product');
+    }
+  };
+
+  const handlePermanentDelete = async (productId, asin) => {
+    if (!confirm(`PERMANENTLY delete product ${asin}? This cannot be undone!`)) return;
+
+    try {
+      await api.delete(`/amazon-lookup/${productId}/permanent`);
+      fetchSavedProducts();
+    } catch (err) {
+      alert('Failed to permanently delete product');
     }
   };
 
@@ -295,16 +328,78 @@ export default function AmazonLookupPage() {
 
       {/* Saved Products Table */}
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6">Saved Products ({savedProducts.length})</Typography>
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={exportToCSV}
-          disabled={exportingCSV || savedProducts.length === 0}
-        >
-          {exportingCSV ? 'Exporting...' : 'Download CSV'}
-        </Button>
+        <Typography variant="h6">
+          {showArchived ? 'Archived Products' : 'Active Products'} ({savedProducts.length})
+        </Typography>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant={showArchived ? 'contained' : 'outlined'}
+            onClick={() => setShowArchived(!showArchived)}
+            color={showArchived ? 'warning' : 'primary'}
+          >
+            {showArchived ? 'Show Active' : 'Show Archived'}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={exportToCSV}
+            disabled={exportingCSV || savedProducts.length === 0}
+          >
+            {exportingCSV ? 'Exporting...' : 'Download CSV'}
+          </Button>
+        </Stack>
       </Stack>
+
+      {/* Table Filters */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Typography variant="subtitle2" sx={{ minWidth: 80 }}>Filters:</Typography>
+          <FormControl sx={{ minWidth: 200 }} size="small">
+            <InputLabel>Filter by Seller</InputLabel>
+            <Select 
+              label="Filter by Seller" 
+              value={filterSeller} 
+              onChange={(e) => setFilterSeller(e.target.value)}
+            >
+              <MenuItem value="">All Sellers</MenuItem>
+              {sellers.map((seller) => (
+                <MenuItem key={seller._id} value={seller._id}>
+                  {seller.user?.username || seller.user?.email || seller._id}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl sx={{ minWidth: 200 }} size="small">
+            <InputLabel>Filter by Umbrella</InputLabel>
+            <Select 
+              label="Filter by Umbrella" 
+              value={filterUmbrella} 
+              onChange={(e) => setFilterUmbrella(e.target.value)}
+            >
+              <MenuItem value="">All Umbrellas</MenuItem>
+              {umbrellas.map((umbrella) => (
+                <MenuItem key={umbrella._id} value={umbrella._id}>
+                  {umbrella.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {(filterSeller || filterUmbrella) && (
+            <Button 
+              size="small" 
+              onClick={() => {
+                setFilterSeller('');
+                setFilterUmbrella('');
+              }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </Stack>
+      </Paper>
+
       <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
         <Table size="small" sx={{ '& .MuiTableCell-root': { py: 1.5 } }} stickyHeader>
           <TableHead>
@@ -459,20 +554,49 @@ export default function AmazonLookupPage() {
                   </Typography>
                 </TableCell>
                 <TableCell align="right">
-                  <IconButton 
-                    size="small" 
-                    color="error"
-                    onClick={() => handleDeleteProduct(product._id, product.asin)}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+                  {showArchived ? (
+                    // Archived products: show restore and permanent delete
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Tooltip title="Restore">
+                        <IconButton 
+                          size="small" 
+                          color="success"
+                          onClick={() => handleRestoreProduct(product._id, product.asin)}
+                        >
+                          <RestoreIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete Permanently">
+                        <IconButton 
+                          size="small" 
+                          color="error"
+                          onClick={() => handlePermanentDelete(product._id, product.asin)}
+                        >
+                          <DeleteForeverIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  ) : (
+                    // Active products: show archive button
+                    <Tooltip title="Archive">
+                      <IconButton 
+                        size="small" 
+                        color="warning"
+                        onClick={() => handleDeleteProduct(product._id, product.asin)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
             {savedProducts.length === 0 && (
               <TableRow>
                 <TableCell colSpan={11 + customColumnNames.length} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                  No saved products yet. Add your first product above!
+                  {showArchived 
+                    ? 'No archived products. Archived products will appear here.' 
+                    : 'No saved products yet. Add your first product above!'}
                 </TableCell>
               </TableRow>
             )}
