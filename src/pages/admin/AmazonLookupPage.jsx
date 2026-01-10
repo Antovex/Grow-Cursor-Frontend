@@ -83,13 +83,43 @@ export default function AmazonLookupPage() {
       // Split ASINs by space and filter empty strings
       const asinList = asins.trim().split(/\s+/).filter(Boolean);
       
+      let successCount = 0;
+      let duplicateCount = 0;
+      const failedAsins = [];
+      
       // Process each ASIN
       for (const asin of asinList) {
-        await api.post('/amazon-lookup', {
-          asin: asin.trim(),
-          sellerId: selectedSeller,
-          productUmbrellaId: selectedUmbrella
-        });
+        try {
+          await api.post('/amazon-lookup', {
+            asin: asin.trim(),
+            sellerId: selectedSeller,
+            productUmbrellaId: selectedUmbrella
+          });
+          successCount++;
+        } catch (err) {
+          if (err.response?.status === 409) {
+            // Duplicate detected
+            duplicateCount++;
+          } else {
+            failedAsins.push({ asin: asin.trim(), error: err.response?.data?.error || 'Failed' });
+          }
+        }
+      }
+      
+      // Build success message
+      let message = '';
+      if (successCount > 0) {
+        message += `✓ ${successCount} product(s) added successfully. `;
+      }
+      if (duplicateCount > 0) {
+        message += `⚠ ${duplicateCount} duplicate(s) skipped. `;
+      }
+      if (failedAsins.length > 0) {
+        message += `✗ ${failedAsins.length} failed: ${failedAsins.map(f => f.asin).join(', ')}`;
+      }
+      
+      if (message) {
+        setError(message);
       }
       
       setAsins('');
@@ -250,7 +280,13 @@ export default function AmazonLookupPage() {
           </Stack>
 
           {error && (
-            <Paper sx={{ p: 2, bgcolor: 'error.light', color: 'error.contrastText' }}>
+            <Paper sx={{ 
+              p: 2, 
+              bgcolor: error.startsWith('✓') || error.includes('added successfully') ? 'success.light' : 
+                       error.startsWith('⚠') ? 'warning.light' : 'error.light',
+              color: error.startsWith('✓') || error.includes('added successfully') ? 'success.contrastText' : 
+                     error.startsWith('⚠') ? 'warning.contrastText' : 'error.contrastText'
+            }}>
               {error}
             </Paper>
           )}
