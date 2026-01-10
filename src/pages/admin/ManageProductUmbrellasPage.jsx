@@ -24,6 +24,11 @@ export default function ManageProductUmbrellasPage() {
     customColumns: [] // { columnId, columnName, prompt, defaultPrompt }
   });
 
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    customColumns: []
+  });
+
   const [editDialog, setEditDialog] = useState(false);
   const [editingUmbrella, setEditingUmbrella] = useState(null);
 
@@ -97,7 +102,7 @@ export default function ManageProductUmbrellasPage() {
       defaultPrompt: col.columnId.prompt
     }));
 
-    setFormData({
+    setEditFormData({
       name: umbrella.name,
       customColumns: columnsWithDetails
     });
@@ -112,8 +117,8 @@ export default function ManageProductUmbrellasPage() {
       setLoading(true);
       
       const dataToSend = {
-        name: formData.name,
-        customColumns: formData.customColumns.map(col => ({
+        name: editFormData.name,
+        customColumns: editFormData.customColumns.map(col => ({
           columnId: col.columnId,
           prompt: col.prompt
         }))
@@ -123,7 +128,7 @@ export default function ManageProductUmbrellasPage() {
       setSuccess('Product umbrella updated successfully!');
       setEditDialog(false);
       setEditingUmbrella(null);
-      setFormData({ name: '', customColumns: [] });
+      setEditFormData({ name: '', customColumns: [] });
       fetchUmbrellas();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update umbrella');
@@ -173,6 +178,30 @@ export default function ManageProductUmbrellasPage() {
     }
   };
 
+  const toggleEditColumn = (column) => {
+    const exists = editFormData.customColumns.find(c => c.columnId === column._id);
+    
+    if (exists) {
+      setEditFormData({
+        ...editFormData,
+        customColumns: editFormData.customColumns.filter(c => c.columnId !== column._id)
+      });
+    } else {
+      setEditFormData({
+        ...editFormData,
+        customColumns: [
+          ...editFormData.customColumns,
+          {
+            columnId: column._id,
+            columnName: column.name,
+            prompt: column.prompt,
+            defaultPrompt: column.prompt
+          }
+        ]
+      });
+    }
+  };
+
   const updateColumnPrompt = (columnId, newPrompt) => {
     setFormData({
       ...formData,
@@ -182,7 +211,17 @@ export default function ManageProductUmbrellasPage() {
     });
   };
 
-  const FormContent = () => (
+  const updateEditColumnPrompt = (columnId, newPrompt) => {
+    setEditFormData({
+      ...editFormData,
+      customColumns: editFormData.customColumns.map(col =>
+        col.columnId === columnId ? { ...col, prompt: newPrompt } : col
+      )
+    });
+  };
+
+  // Form content - recreated on each render but React reconciliation handles it properly
+  const formContent = (
     <Stack spacing={3}>
       <TextField
         label="Product Umbrella Name"
@@ -253,6 +292,77 @@ export default function ManageProductUmbrellasPage() {
     </Stack>
   );
 
+  const editFormContent = (
+    <Stack spacing={3}>
+      <TextField
+        label="Product Umbrella Name"
+        required
+        fullWidth
+        value={editFormData.name}
+        onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+        placeholder="e.g., Rear Light, Phone Cases"
+      />
+
+      <FormControl component="fieldset">
+        <FormLabel component="legend">Custom Columns (Optional)</FormLabel>
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 2 }}>
+          Select columns and customize their prompts for this umbrella
+        </Typography>
+
+        {availableColumns.map((column) => {
+          const isSelected = editFormData.customColumns.some(c => c.columnId === column._id);
+          const selectedColumn = editFormData.customColumns.find(c => c.columnId === column._id);
+
+          return (
+            <Accordion key={column._id} expanded={isSelected}>
+              <AccordionSummary expandIcon={isSelected && <ExpandMoreIcon />}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isSelected}
+                      onChange={() => toggleEditColumn(column)}
+                    />
+                  }
+                  label={<strong>{column.name}</strong>}
+                />
+              </AccordionSummary>
+              {isSelected && (
+                <AccordionDetails>
+                  <Stack spacing={2}>
+                    <Typography variant="caption" color="text.secondary">
+                      Available placeholders: {'{title}'}, {'{brand}'}, {'{description}'}, {'{price}'}, {'{asin}'}
+                    </Typography>
+                    <TextField
+                      label="Custom Prompt for this Umbrella"
+                      multiline
+                      rows={4}
+                      fullWidth
+                      value={selectedColumn?.prompt || ''}
+                      onChange={(e) => updateEditColumnPrompt(column._id, e.target.value)}
+                      helperText="Customize the prompt specifically for this product umbrella"
+                    />
+                    <Button
+                      size="small"
+                      onClick={() => updateEditColumnPrompt(column._id, column.prompt)}
+                    >
+                      Reset to Default Prompt
+                    </Button>
+                  </Stack>
+                </AccordionDetails>
+              )}
+            </Accordion>
+          );
+        })}
+
+        {availableColumns.length === 0 && (
+          <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+            No custom columns available. Create them in the Column Creator page first.
+          </Typography>
+        )}
+      </FormControl>
+    </Stack>
+  );
+
   return (
     <Box>
       <Typography variant="h6" sx={{ mb: 2 }}>Manage Product Umbrellas</Typography>
@@ -265,7 +375,7 @@ export default function ManageProductUmbrellasPage() {
           Add New Product Umbrella
         </Typography>
         <Box component="form" onSubmit={handleSubmit}>
-          <FormContent />
+          {formContent}
           <Button
             type="submit"
             variant="contained"
@@ -345,7 +455,7 @@ export default function ManageProductUmbrellasPage() {
         <DialogTitle>Edit Product Umbrella</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
-            <FormContent />
+            {editFormContent}
           </Box>
         </DialogContent>
         <DialogActions>
