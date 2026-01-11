@@ -3,12 +3,18 @@ import {
   Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   FormControl, InputLabel, MenuItem, Select, Stack, Table,
   TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, Paper, Checkbox, Typography, Alert, Divider, Grid, CircularProgress
+  TextField, Paper, Checkbox, Typography, Alert, Divider, Grid, CircularProgress,
+  useMediaQuery, useTheme, Chip
 } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import api from '../../lib/api.js';
 
 export default function ListingManagementPage() {
+  // Mobile responsiveness (same approach as FulfillmentDashboard)
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -248,6 +254,9 @@ export default function ListingManagementPage() {
 
   const isSelected = (id) => selectedTaskIds.indexOf(id) !== -1;
 
+  // Helper to format marketplace string
+  const formatMarketplace = (m) => (m ? m.replace('EBAY_', 'eBay ').replace('_', ' ') : '-');
+
   if (loading) {
     return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
   }
@@ -255,21 +264,91 @@ export default function ListingManagementPage() {
   return (
     <Box>
       {/* Action Bar */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, p: 1 }}>
+      <Stack
+        direction={{ xs: 'column', lg: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'stretch', lg: 'center' }}
+        spacing={1.5}
+        sx={{ mb: 2, p: 1 }}
+      >
         <Typography variant="h6">Listing Management</Typography>
+
         {selectedTaskIds.length > 0 && (
-          <Button 
-            variant="contained" 
-            color="primary" 
+          <Button
+            variant="contained"
+            color="primary"
             startIcon={<AssignmentIcon />}
             onClick={openBulkAssign}
+            fullWidth={isMobile}
           >
             Assign {selectedTaskIds.length} Selected Tasks
           </Button>
         )}
       </Stack>
 
-      <TableContainer component={Paper}>
+      {/* MOBILE/TABLET: Card view */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        <Stack spacing={1.5}>
+          {rows.map((r, idx) => {
+            const checked = isSelected(r._id);
+            return (
+              <Paper key={r._id} elevation={2} sx={{ p: 2, borderRadius: 2 }}>
+                <Stack spacing={1}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                    <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                      <Checkbox
+                        color="primary"
+                        checked={checked}
+                        onChange={(event) => handleClick(event, r._id)}
+                        sx={{ p: 0, mt: 0.25 }}
+                      />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          #{idx + 1} • {r.date ? new Date(r.date).toLocaleDateString() : '-'}
+                        </Typography>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, wordBreak: 'break-word' }}>
+                          {r.productTitle || '-'}
+                        </Typography>
+
+                        {r.supplierLink ? (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            component="a"
+                            href={r.supplierLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            sx={{ mt: 1 }}
+                          >
+                            Supplier Link
+                          </Button>
+                        ) : null}
+                      </Box>
+                    </Stack>
+
+                    <Button size="small" variant="outlined" onClick={() => openAssign(r)} sx={{ flexShrink: 0 }}>
+                      Share
+                    </Button>
+                  </Stack>
+
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip size="small" label={`Source: ${r.sourcePlatform?.name || '-'}`} />
+                    <Chip size="small" label={`Marketplace: ${formatMarketplace(r.marketplace)}`} />
+                    <Chip
+                      size="small"
+                      label={`Category: ${r.category?.name || '-'}${r.subcategory ? ` / ${r.subcategory.name}` : ''}`}
+                    />
+                    <Chip size="small" label={`Created: ${r.createdBy?.username || '-'}`} />
+                  </Stack>
+                </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      </Box>
+
+      {/* DESKTOP: Table view */}
+      <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -337,7 +416,7 @@ export default function ListingManagementPage() {
       </TableContainer>
 
       {/* --- SINGLE ASSIGN DIALOG --- */}
-      <Dialog open={assignOpen} onClose={() => setAssignOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={assignOpen} onClose={() => setAssignOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>Share Task</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -419,7 +498,7 @@ export default function ListingManagementPage() {
       </Dialog>
 
       {/* --- BULK ASSIGN DIALOG --- */}
-      <Dialog open={bulkAssignOpen} onClose={() => setBulkAssignOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={bulkAssignOpen} onClose={() => setBulkAssignOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>Bulk Assign Tasks</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -428,9 +507,9 @@ export default function ListingManagementPage() {
               Set common details below, then specify quantities and stores for each task.
             </Alert>
 
-            {/* Common Fields */}
+            {/* Common Fields: stack on mobile, 2-col on desktop */}
             <Grid container spacing={2}>
-              <Grid item xs={6}>
+              <Grid item xs={12} md={6}>
                  <FormControl fullWidth size="small">
                   <InputLabel>Lister</InputLabel>
                   <Select
@@ -444,7 +523,7 @@ export default function ListingManagementPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
                   label="Scheduled Date"
@@ -455,7 +534,7 @@ export default function ListingManagementPage() {
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} md={6}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Listing Platform</InputLabel>
                   <Select
@@ -469,7 +548,7 @@ export default function ListingManagementPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} md={6}>
                 {/* This acts as a Helper to apply to all rows */}
                 <FormControl fullWidth size="small" disabled={!assignForm.listingPlatformId}>
                   <InputLabel>Set All Stores</InputLabel>
@@ -512,7 +591,7 @@ export default function ListingManagementPage() {
             </Box>
 
             {/* Task List Table */}
-            <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 300 }}>
+            <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 300, overflowX: 'auto' }}>
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
@@ -565,7 +644,9 @@ export default function ListingManagementPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setBulkAssignOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleBulkAssignSubmit}>Assign All</Button>
+          <Button variant="contained" onClick={handleBulkAssignSubmit} fullWidth={isSmallMobile}>
+            Assign All
+          </Button>
         </DialogActions>
       </Dialog>
 
