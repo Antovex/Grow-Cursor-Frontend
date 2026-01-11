@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Box, Button, Stack, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Typography, TextField, Collapse, IconButton,
-  Badge, Divider, Grid, Chip, Pagination, Autocomplete, FormControl, InputLabel, MenuItem, Select
+  Badge, Divider, Grid, Chip, Pagination, Autocomplete, FormControl, InputLabel, MenuItem, Select,
+  useMediaQuery, useTheme
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -12,6 +13,10 @@ import api from '../../lib/api.js';
 const unique = (arr) => Array.from(new Set(arr.filter(Boolean)));
 
 export default function ListingSheetPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [allRows, setAllRows] = useState([]); // Store all data
   const [platforms, setPlatforms] = useState([]);
   const [stores, setStores] = useState([]);
@@ -213,20 +218,59 @@ export default function ListingSheetPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const ListingCards = () => (
+    <Stack spacing={1.5}>
+      {filteredRows.map((row, idx) => (
+        <Paper key={idx} elevation={2} sx={{ p: 2, borderRadius: 2 }}>
+          <Stack spacing={0.75}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              {row.date ? new Date(row.date).toLocaleDateString('en-GB') : '—'}
+            </Typography>
+
+            <Typography variant="body2">Platform: {row.platform || '—'}</Typography>
+            <Typography variant="body2">Store: {row.store || '—'}</Typography>
+
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip size="small" label={`Marketplace: ${(row.marketplace || '—').replace('EBAY_', 'eBay ').replace('_', ' ')}`} />
+              <Chip size="small" label={`Category: ${row.category || '—'}`} />
+              <Chip size="small" label={`Subcategory: ${row.subcategory || '—'}`} />
+              <Chip size="small" label={`Range: ${row.range || '—'}`} />
+            </Stack>
+
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+              Quantity: {row.quantity ?? 0}
+            </Typography>
+          </Stack>
+        </Paper>
+      ))}
+
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          Total: {totalQuantity}
+        </Typography>
+      </Paper>
+    </Stack>
+  );
+
   return (
     <Box>
       <Typography variant="h5" sx={{ mb: 3 }}>Listing Sheet</Typography>
 
       <Paper sx={{ p: 1.5, mb: 1.5 }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}>
+        <Stack
+          direction={{ xs: 'column', lg: 'row' }}
+          alignItems={{ xs: 'stretch', lg: 'center' }}
+          justifyContent="space-between"
+          gap={1}
+        >
           <Stack direction="row" alignItems="center" gap={1}>
             <Badge color={activeCount ? 'primary' : 'default'} badgeContent={activeCount} overlap="circular">
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 onClick={() => setOpenFilters(!openFilters)}
-                sx={{ 
-                  transform: openFilters ? 'rotate(180deg)' : 'rotate(0)', 
-                  transition: 'transform 0.2s' 
+                sx={{
+                  transform: openFilters ? 'rotate(180deg)' : 'rotate(0)',
+                  transition: 'transform 0.2s'
                 }}
               >
                 <ExpandMoreIcon />
@@ -236,13 +280,15 @@ export default function ListingSheetPage() {
               <FilterListIcon fontSize="small" /> Listing Sheet Filters
             </Typography>
           </Stack>
-          <Stack direction="row" gap={1}>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} gap={1} sx={{ width: { xs: '100%', lg: 'auto' } }}>
             <Button
               size="small"
               variant="outlined"
               startIcon={<ClearAllIcon />}
               onClick={handleReset}
               disabled={activeCount === 0}
+              fullWidth={isSmallMobile}
             >
               Clear all
             </Button>
@@ -409,41 +455,49 @@ export default function ListingSheetPage() {
       </Paper>
 
       {filteredRows.length > 0 && (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell><strong>Date</strong></TableCell>
-                <TableCell><strong>Platform</strong></TableCell>
-                <TableCell><strong>Store</strong></TableCell>
-                <TableCell><strong>Marketplace</strong></TableCell>
-                <TableCell><strong>Category</strong></TableCell>
-                <TableCell><strong>Subcategory</strong></TableCell>
-                <TableCell><strong>Range</strong></TableCell>
-                <TableCell align="right"><strong>Quantity</strong></TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredRows.map((row, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>{new Date(row.date).toLocaleDateString('en-GB')}</TableCell>
-                  <TableCell>{row.platform}</TableCell>
-                  <TableCell>{row.store}</TableCell>
-                  <TableCell>{row.marketplace?.replace('EBAY_', 'eBay ').replace('_', ' ')}</TableCell>
-                  <TableCell>{row.category}</TableCell>
-                  <TableCell>{row.subcategory}</TableCell>
-                  <TableCell>{row.range}</TableCell>
-                  <TableCell align="right">{row.quantity}</TableCell>
+        <>
+          {/* MOBILE/TABLET: Cards */}
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <ListingCards />
+          </Box>
+
+          {/* DESKTOP: Table */}
+          <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
+            <Table size="small" sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell><strong>Date</strong></TableCell>
+                  <TableCell><strong>Platform</strong></TableCell>
+                  <TableCell><strong>Store</strong></TableCell>
+                  <TableCell><strong>Marketplace</strong></TableCell>
+                  <TableCell><strong>Category</strong></TableCell>
+                  <TableCell><strong>Subcategory</strong></TableCell>
+                  <TableCell><strong>Range</strong></TableCell>
+                  <TableCell align="right"><strong>Quantity</strong></TableCell>
                 </TableRow>
-              ))}
-              {/* Total Row */}
-              <TableRow sx={{ backgroundColor: 'action.hover', fontWeight: 'bold' }}>
-                <TableCell colSpan={7} align="right"><strong>Total</strong></TableCell>
-                <TableCell align="right"><strong>{totalQuantity}</strong></TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {filteredRows.map((row, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>{new Date(row.date).toLocaleDateString('en-GB')}</TableCell>
+                    <TableCell>{row.platform}</TableCell>
+                    <TableCell>{row.store}</TableCell>
+                    <TableCell>{row.marketplace?.replace('EBAY_', 'eBay ').replace('_', ' ')}</TableCell>
+                    <TableCell>{row.category}</TableCell>
+                    <TableCell>{row.subcategory}</TableCell>
+                    <TableCell>{row.range}</TableCell>
+                    <TableCell align="right">{row.quantity}</TableCell>
+                  </TableRow>
+                ))}
+                {/* Total Row */}
+                <TableRow sx={{ backgroundColor: 'action.hover', fontWeight: 'bold' }}>
+                  <TableCell colSpan={7} align="right"><strong>Total</strong></TableCell>
+                  <TableCell align="right"><strong>{totalQuantity}</strong></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
       )}
 
       {filteredRows.length === 0 && (
