@@ -126,14 +126,19 @@ export default function FieldConfigList({ configs, onChange }) {
                     value={config.source}
                     onChange={(e) => {
                       const newSource = e.target.value;
-                      handleUpdate(index, 'source', newSource);
-                      // Reset related fields
-                      if (newSource === 'ai') {
-                        handleUpdate(index, 'amazonField', '');
-                        handleUpdate(index, 'transform', 'none');
-                      } else {
-                        handleUpdate(index, 'promptTemplate', '');
-                      }
+                      const newConfigs = [...configs];
+                      newConfigs[index] = { 
+                        ...newConfigs[index], 
+                        source: newSource,
+                        // Reset related fields based on source type
+                        ...(newSource === 'ai' ? {
+                          amazonField: '',
+                          transform: 'none'
+                        } : {
+                          promptTemplate: ''
+                        })
+                      };
+                      onChange(newConfigs);
                     }}
                     fullWidth
                   >
