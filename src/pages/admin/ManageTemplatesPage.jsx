@@ -106,6 +106,20 @@ export default function ManageTemplatesPage() {
     setEditDialog(true);
   };
 
+  const handleCloseEditDialog = () => {
+    setEditDialog(false);
+    setEditingTemplate(null);
+    setCurrentTab(0);
+    setFormData({
+      name: '',
+      customColumns: [],
+      asinAutomation: {
+        enabled: false,
+        fieldConfigs: []
+      }
+    });
+  };
+
   const handleUpdate = async () => {
     setError('');
     setSuccess('');
@@ -342,7 +356,7 @@ export default function ManageTemplatesPage() {
       </Paper>
 
       {/* Edit Template Dialog */}
-      <Dialog open={editDialog} onClose={() => setEditDialog(false)} maxWidth="md" fullWidth>
+      <Dialog open={editDialog} onClose={handleCloseEditDialog} maxWidth="md" fullWidth>
         <DialogTitle>Edit Template</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
@@ -456,7 +470,7 @@ export default function ManageTemplatesPage() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setEditDialog(false); setCurrentTab(0); }}>Cancel</Button>
+          <Button onClick={handleCloseEditDialog}>Cancel</Button>
           <Button onClick={handleUpdate} variant="contained" disabled={loading}>
             Update
           </Button>
