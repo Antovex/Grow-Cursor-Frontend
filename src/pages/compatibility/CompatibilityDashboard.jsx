@@ -99,6 +99,7 @@ export default function CompatibilityDashboard() {
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedYears, setSelectedYears] = useState([]);
   const [newNotes, setNewNotes] = useState('');
+  const [pageInputValue, setPageInputValue] = useState('');
 
   useEffect(() => {
     const initDashboard = async () => {
@@ -354,6 +355,16 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
     setSnackbar({ open: true, message, severity });
   };
 
+  const handleGoToPage = () => {
+    const pageNum = parseInt(pageInputValue);
+    if (!pageInputValue || isNaN(pageNum) || pageNum < 1 || pageNum > totalPages) {
+      showSnackbar(`Please enter a valid page number (1-${totalPages})`, 'error');
+      return;
+    }
+    setPage(pageNum);
+    setPageInputValue('');
+  };
+
   // Select All years toggle
   const toggleSelectAllYears = () => {
     setSelectedYears((prev) => (
@@ -498,6 +509,23 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
                 }}
                 sx={{ width: 300, bgcolor: 'white' }}
             />
+
+            {/* GO TO PAGE INPUT */}
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <TextField
+                type="number"
+                placeholder="Go to page"
+                size="small"
+                value={pageInputValue}
+                onChange={(e) => setPageInputValue(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleGoToPage()}
+                inputProps={{ min: 1, max: totalPages }}
+                sx={{ width: 180 }}
+              />
+              <Button variant="outlined" size="small" onClick={handleGoToPage}>
+                Go
+              </Button>
+            </Box>
 
             <FormControl size="small" sx={{ minWidth: 200 }}>
                 <InputLabel>Select Seller</InputLabel>
