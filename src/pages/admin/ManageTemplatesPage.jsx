@@ -14,6 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api.js';
 import FieldConfigList from '../../components/FieldConfigList.jsx';
+import PricingConfigSection from '../../components/PricingConfigSection.jsx';
 
 export default function ManageTemplatesPage() {
   const navigate = useNavigate();
@@ -28,6 +29,19 @@ export default function ManageTemplatesPage() {
     asinAutomation: {
       enabled: false,
       fieldConfigs: []
+    },
+    pricingConfig: {
+      enabled: false,
+      spentRate: null,
+      payoutRate: null,
+      desiredProfit: null,
+      fixedFee: 0,
+      saleTax: 0,
+      ebayFee: 12.9,
+      adsFee: 3,
+      tdsFee: 1,
+      shippingCost: 0,
+      taxRate: 10
     }
   });
   
@@ -82,6 +96,19 @@ export default function ManageTemplatesPage() {
         asinAutomation: {
           enabled: false,
           fieldConfigs: []
+        },
+        pricingConfig: {
+          enabled: false,
+          spentRate: null,
+          payoutRate: null,
+          desiredProfit: null,
+          fixedFee: 0,
+          saleTax: 0,
+          ebayFee: 12.9,
+          adsFee: 3,
+          tdsFee: 1,
+          shippingCost: 0,
+          taxRate: 10
         }
       });
       fetchTemplates();
@@ -101,6 +128,19 @@ export default function ManageTemplatesPage() {
       asinAutomation: template.asinAutomation || {
         enabled: false,
         fieldConfigs: []
+      },
+      pricingConfig: template.pricingConfig || {
+        enabled: false,
+        spentRate: null,
+        payoutRate: null,
+        desiredProfit: null,
+        fixedFee: 0,
+        saleTax: 0,
+        ebayFee: 12.9,
+        adsFee: 3,
+        tdsFee: 1,
+        shippingCost: 0,
+        taxRate: 10
       }
     });
     setEditDialog(true);
@@ -116,6 +156,19 @@ export default function ManageTemplatesPage() {
       asinAutomation: {
         enabled: false,
         fieldConfigs: []
+      },
+      pricingConfig: {
+        enabled: false,
+        spentRate: null,
+        payoutRate: null,
+        desiredProfit: null,
+        fixedFee: 0,
+        saleTax: 0,
+        ebayFee: 12.9,
+        adsFee: 3,
+        tdsFee: 1,
+        shippingCost: 0,
+        taxRate: 10
       }
     });
   };
@@ -136,6 +189,19 @@ export default function ManageTemplatesPage() {
         asinAutomation: {
           enabled: false,
           fieldConfigs: []
+        },
+        pricingConfig: {
+          enabled: false,
+          spentRate: null,
+          payoutRate: null,
+          desiredProfit: null,
+          fixedFee: 0,
+          saleTax: 0,
+          ebayFee: 12.9,
+          adsFee: 3,
+          tdsFee: 1,
+          shippingCost: 0,
+          taxRate: 10
         }
       });
       fetchTemplates();
@@ -365,6 +431,7 @@ export default function ManageTemplatesPage() {
               <Tab label="Basic Info" />
               <Tab label="Custom Columns" />
               <Tab label="ASIN Auto-Fill" />
+              <Tab label="💰 Pricing Calculator" />
             </Tabs>
             
             <Box sx={{ minHeight: 300 }}>
@@ -467,6 +534,17 @@ export default function ManageTemplatesPage() {
                     </>
                   )}
                 </Stack>
+              )}
+              
+              {/* Tab 3: Pricing Calculator */}
+              {currentTab === 3 && (
+                <PricingConfigSection
+                  pricingConfig={formData.pricingConfig}
+                  onChange={(newConfig) => setFormData({
+                    ...formData,
+                    pricingConfig: newConfig
+                  })}
+                />
               )}
             </Box>
           </Box>

@@ -359,7 +359,17 @@ export default function TemplateListingsPage() {
       setAutoFilledFields(allFilledFields);
 
       const totalFields = Object.keys(coreFields).length + Object.keys(customFields).length;
-      setAsinSuccess(`Successfully auto-filled ${totalFields} field(s) from Amazon data (${Object.keys(coreFields).length} core, ${Object.keys(customFields).length} custom)`);
+      
+      // Show success message with pricing calculation info if available
+      let successMsg = `Successfully auto-filled ${totalFields} field(s) from Amazon data (${Object.keys(coreFields).length} core, ${Object.keys(customFields).length} custom)`;
+      
+      if (data.pricingCalculation?.enabled && !data.pricingCalculation?.error) {
+        successMsg += `\n💰 Start Price Auto-Calculated: $${data.pricingCalculation.calculatedStartPrice} (based on Amazon cost: ${data.pricingCalculation.amazonCost})`;
+      } else if (data.pricingCalculation?.error) {
+        console.error('Pricing calculation error:', data.pricingCalculation.error);
+      }
+      
+      setAsinSuccess(successMsg);
     } catch (err) {
       setAsinError(err.response?.data?.error || 'Failed to auto-fill from ASIN');
       console.error(err);
