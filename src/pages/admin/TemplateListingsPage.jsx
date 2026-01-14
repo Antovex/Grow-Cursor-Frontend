@@ -4,7 +4,7 @@ import {
   Box, Button, Paper, Stack, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Typography, IconButton, Dialog, DialogTitle, 
   DialogContent, DialogActions, Alert, Pagination, TextField, Tabs, Tab, MenuItem,
-  Chip, CircularProgress
+  Chip, CircularProgress, Switch, FormControlLabel, LinearProgress
 } from '@mui/material';
 import { 
   Delete as DeleteIcon, 
@@ -15,6 +15,7 @@ import {
   ContentCopy as CopyIcon
 } from '@mui/icons-material';
 import api from '../../lib/api.js';
+import BulkListingPreview from '../../components/BulkListingPreview.jsx';
 
 export default function TemplateListingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -37,6 +38,12 @@ export default function TemplateListingsPage() {
   const [asinError, setAsinError] = useState('');
   const [asinSuccess, setAsinSuccess] = useState('');
   const [autoFilledFields, setAutoFilledFields] = useState(new Set());
+
+  // Bulk mode state
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkResults, setBulkResults] = useState([]);
+  const [loadingBulk, setLoadingBulk] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
 
   const [listingFormData, setListingFormData] = useState({
     action: 'Add',
@@ -378,6 +385,152 @@ export default function TemplateListingsPage() {
     }
   };
 
+  const handleBulkAutofill = async () => {
+    if (!asinInput.trim()) {
+      setAsinError('Please enter at least one ASIN');
+      return;
+    }
+
+    setAsinError('');
+    setAsinSuccess('');
+    setLoadingBulk(true);
+    setBulkProgress({ current: 0, total: 0 });
+
+    try {
+      // Parse comma-separated ASINs
+      const asins = asinInput
+        .split(',')
+        .map(asin => asin.trim().toUpperCase())
+        .filter(asin => asin.length > 0);
+
+      if (asins.length === 0) {
+        setAsinError('Please enter valid ASINs');
+        setLoadingBulk(false);
+        return;
+      }
+
+      if (asins.length > 50) {
+        setAsinError('Maximum 50 ASINs allowed per batch');
+        setLoadingBulk(false);
+        return;
+      }
+
+      setBulkProgress({ current: 0, total: asins.length });
+
+      const { data } = await api.post('/template-listings/bulk-autofill-from-asins', {
+        asins,
+        templateId
+      });
+
+      // Add auto-generated SKUs to results
+      const resultsWithSKUs = data.results.map(result => ({
+        ...result,
+        sku: result.asin // Default SKU, user can edit
+      }));
+
+      setBulkResults(resultsWithSKUs);
+      setAsinSuccess(
+        `Processed ${data.total} ASIN(s): ${data.successful} successful, ${data.failed} failed${data.duplicates > 0 ? `, ${data.duplicates} duplicates` : ''} (${data.processingTime})`
+      );
+    } catch (err) {
+      setAsinError(err.response?.data?.error || 'Failed to process bulk ASINs');
+      console.error(err);
+    } finally {
+      setLoadingBulk(false);
+    }
+  };
+
+  const handleRemoveBulkResult = (asin) => {
+    setBulkResults(bulkResults.filter(r => r.asin !== asin));
+  };
+
+  const handleRetryBulkAsin = async (asin) => {
+    setLoadingBulk(true);
+    try {
+      const { data } = await api.post('/template-listings/bulk-autofill-from-asins', {
+        asins: [asin],
+        templateId
+      });
+
+      if (data.results.length > 0) {
+        const newResult = {
+          ...data.results[0],
+          sku: data.results[0].asin
+        };
+
+        setBulkResults(bulkResults.map(r => 
+          r.asin === asin ? newResult : r
+        ));
+      }
+    } catch (err) {
+      console.error('Retry error:', err);
+    } finally {
+      setLoadingBulk(false);
+    }
+  };
+
+  const handleEditBulkSKU = (asin, newSKU) => {
+    setBulkResults(bulkResults.map(r => 
+      r.asin === asin ? { ...r, sku: newSKU } : r
+    ));
+  };
+
+  const handleBulkSave = async () => {
+    const validResults = bulkResults.filter(r => r.status === 'success');
+
+    if (validResults.length === 0) {
+      setError('No valid listings to save');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      // Prepare listings for bulk create
+      const listings = validResults.map(result => ({
+        ...result.autoFilledData.coreFields,
+        customFields: result.autoFilledData.customFields,
+        customLabel: result.sku,
+        _asinReference: result.asin
+      }));
+
+      const { data } = await api.post('/template-listings/bulk-create', {
+        templateId,
+        listings,
+        options: {
+          autoGenerateSKU: true,
+          skipDuplicates: true
+        }
+      });
+
+      setSuccess(
+        `Bulk create completed: ${data.created} created, ${data.failed} failed, ${data.skipped} skipped`
+      );
+
+      // Refresh listings table
+      await fetchListings(pagination.page);
+
+      // Reset bulk mode
+      setBulkMode(false);
+      setBulkResults([]);
+      setAsinInput('');
+      setAddEditDialog(false);
+
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save listings');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const parseAsinCount = () => {
+    if (!asinInput.trim()) return 0;
+    return asinInput.split(',').filter(a => a.trim().length > 0).length;
+  };
+
   const handleExportCSV = async () => {
     try {
       setLoading(true);
@@ -554,33 +707,80 @@ export default function TemplateListingsPage() {
 
       {/* Add/Edit Listing Dialog */}
       <Dialog open={addEditDialog} onClose={() => setAddEditDialog(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>{editingListing ? 'Edit Listing' : 'Add New Listing'}</DialogTitle>
+        <DialogTitle>
+          {editingListing ? 'Edit Listing' : bulkMode ? 'Bulk Add Listings' : 'Add New Listing'}
+        </DialogTitle>
         <DialogContent>
           {/* ASIN Auto-Fill Section (only show if template has automation enabled and not editing) */}
           {!editingListing && template?.asinAutomation?.enabled && (
             <Paper variant="outlined" sx={{ p: 2, mb: 3, mt: 1, bgcolor: 'primary.50' }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Auto-Fill from Amazon ASIN
-              </Typography>
-              <Stack direction="row" spacing={2} alignItems="flex-start">
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2">
+                  Auto-Fill from Amazon ASIN
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={bulkMode}
+                      onChange={(e) => {
+                        setBulkMode(e.target.checked);
+                        setBulkResults([]);
+                        setAsinInput('');
+                        setAsinError('');
+                        setAsinSuccess('');
+                      }}
+                      size="small"
+                    />
+                  }
+                  label={bulkMode ? '📦 Bulk Mode' : 'Single Mode'}
+                />
+              </Stack>
+              
+              <Stack spacing={2}>
                 <TextField
-                  label="Amazon ASIN"
+                  label={bulkMode ? "Amazon ASINs (comma-separated)" : "Amazon ASIN"}
                   size="small"
                   value={asinInput}
                   onChange={(e) => setAsinInput(e.target.value)}
-                  placeholder="e.g., B08N5WRWNW"
-                  sx={{ flexGrow: 1 }}
-                  disabled={loadingAsin}
+                  placeholder={bulkMode ? "e.g., B08N5WRWNW, B09G9HD6PD, B07XYZ1234" : "e.g., B08N5WRWNW"}
+                  multiline={bulkMode}
+                  rows={bulkMode ? 3 : 1}
+                  fullWidth
+                  disabled={loadingAsin || loadingBulk}
+                  helperText={bulkMode ? `${parseAsinCount()} ASIN(s) entered (max 50)` : ''}
                 />
-                <Button
-                  variant="contained"
-                  onClick={handleAsinAutofill}
-                  disabled={loadingAsin || !asinInput.trim()}
-                  startIcon={loadingAsin && <CircularProgress size={16} />}
-                >
-                  {loadingAsin ? 'Loading...' : 'Auto-Fill'}
-                </Button>
+                
+                <Stack direction="row" spacing={2}>
+                  {!bulkMode ? (
+                    <Button
+                      variant="contained"
+                      onClick={handleAsinAutofill}
+                      disabled={loadingAsin || !asinInput.trim()}
+                      startIcon={loadingAsin && <CircularProgress size={16} />}
+                      fullWidth
+                    >
+                      {loadingAsin ? 'Loading...' : 'Auto-Fill'}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      onClick={handleBulkAutofill}
+                      disabled={loadingBulk || parseAsinCount() === 0 || parseAsinCount() > 50}
+                      startIcon={loadingBulk && <CircularProgress size={16} />}
+                      fullWidth
+                    >
+                      {loadingBulk ? `Processing... ${bulkProgress.current}/${bulkProgress.total}` : `🚀 Bulk Auto-Fill (${parseAsinCount()} ASINs)`}
+                    </Button>
+                  )}
+                </Stack>
               </Stack>
+              
+              {loadingBulk && (
+                <Box sx={{ mt: 2 }}>
+                  <LinearProgress />
+                </Box>
+              )}
+              
               {asinError && (
                 <Alert severity="error" sx={{ mt: 2 }}>
                   {asinError}
@@ -591,10 +791,25 @@ export default function TemplateListingsPage() {
                   {asinSuccess}
                 </Alert>
               )}
+              
+              {/* Bulk Preview */}
+              {bulkMode && bulkResults.length > 0 && (
+                <Box sx={{ mt: 3 }}>
+                  <BulkListingPreview
+                    results={bulkResults}
+                    onRemove={handleRemoveBulkResult}
+                    onRetry={handleRetryBulkAsin}
+                    onEditSKU={handleEditBulkSKU}
+                  />
+                </Box>
+              )}
             </Paper>
           )}
 
-          <Tabs value={currentTab} onChange={(e, v) => setCurrentTab(v)} sx={{ mb: 2, mt: 1 }} variant="scrollable" scrollButtons="auto">
+          {/* Show form tabs only in single mode */}
+          {!bulkMode && (
+            <>
+              <Tabs value={currentTab} onChange={(e, v) => setCurrentTab(v)} sx={{ mb: 2, mt: 1 }} variant="scrollable" scrollButtons="auto">
             <Tab label="Basic Info" />
             <Tab label="Pricing & Offers" />
             <Tab label="Shipping & Location" />
@@ -1008,12 +1223,31 @@ export default function TemplateListingsPage() {
               </Stack>
             )}
           </Box>
+          </>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddEditDialog(false)}>Cancel</Button>
-          <Button onClick={handleSaveListing} variant="contained" disabled={loading}>
-            {editingListing ? 'Update' : 'Create'}
+          <Button onClick={() => {
+            setAddEditDialog(false);
+            setBulkMode(false);
+            setBulkResults([]);
+            setAsinInput('');
+          }}>
+            Cancel
           </Button>
+          {bulkMode && bulkResults.length > 0 ? (
+            <Button 
+              onClick={handleBulkSave} 
+              variant="contained" 
+              disabled={loading || bulkResults.filter(r => r.status === 'success').length === 0}
+            >
+              Save All ({bulkResults.filter(r => r.status === 'success').length} valid)
+            </Button>
+          ) : !bulkMode ? (
+            <Button onClick={handleSaveListing} variant="contained" disabled={loading}>
+              {editingListing ? 'Update' : 'Create'}
+            </Button>
+          ) : null}
         </DialogActions>
       </Dialog>
     </Box>
