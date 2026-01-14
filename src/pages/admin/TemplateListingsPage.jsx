@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material';
 import api from '../../lib/api.js';
 import BulkListingPreview from '../../components/BulkListingPreview.jsx';
+import { parseAsins, getParsingStats, getValidationError } from '../../utils/asinParser.js';
 
 export default function TemplateListingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -397,11 +398,9 @@ export default function TemplateListingsPage() {
     setBulkProgress({ current: 0, total: 0 });
 
     try {
-      // Parse comma-separated ASINs
-      const asins = asinInput
-        .split(',')
-        .map(asin => asin.trim().toUpperCase())
-        .filter(asin => asin.length > 0);
+      // Parse ASINs using flexible parser (supports commas, newlines, spaces, tabs, etc.)
+      const asins = parseAsins(asinInput);
+      const stats = getParsingStats(asinInput);
 
       if (asins.length === 0) {
         setAsinError('Please enter valid ASINs');
@@ -413,6 +412,11 @@ export default function TemplateListingsPage() {
         setAsinError('Maximum 50 ASINs allowed per batch');
         setLoadingBulk(false);
         return;
+      }
+
+      // Warn about invalid ASINs if any
+      if (stats.invalid > 0) {
+        console.warn(`Found ${stats.invalid} invalid ASIN(s) that were filtered out`);
       }
 
       setBulkProgress({ current: 0, total: asins.length });
@@ -528,7 +532,8 @@ export default function TemplateListingsPage() {
 
   const parseAsinCount = () => {
     if (!asinInput.trim()) return 0;
-    return asinInput.split(',').filter(a => a.trim().length > 0).length;
+    const asins = parseAsins(asinInput);
+    return asins.length;
   };
 
   const handleExportCSV = async () => {
@@ -738,16 +743,58 @@ export default function TemplateListingsPage() {
               
               <Stack spacing={2}>
                 <TextField
-                  label={bulkMode ? "Amazon ASINs (comma-separated)" : "Amazon ASIN"}
+                  label={bulkMode ? "Amazon ASINs (any format)" : "Amazon ASIN"}
                   size="small"
                   value={asinInput}
                   onChange={(e) => setAsinInput(e.target.value)}
-                  placeholder={bulkMode ? "e.g., B08N5WRWNW, B09G9HD6PD, B07XYZ1234" : "e.g., B08N5WRWNW"}
+                  placeholder={bulkMode ? "Paste ASINs separated by commas, spaces, or newlines (e.g., from Excel/Sheets)" : "e.g., B08N5WRWNW"}
                   multiline={bulkMode}
                   rows={bulkMode ? 3 : 1}
                   fullWidth
                   disabled={loadingAsin || loadingBulk}
-                  helperText={bulkMode ? `${parseAsinCount()} ASIN(s) entered (max 50)` : ''}
+                  helperText={
+                    bulkMode ? 
+                      (() => {
+                        const stats = getParsingStats(asinInput);
+                        if (stats.total === 0) return 'Enter ASINs (max 50) - supports any format: commas, newlines, spaces, tabs';
+                        
+                        return (
+                          <Stack direction="row" spacing={1} alignItems="center" component="span">
+                            <Chip 
+                              size="small" 
+                              label={`${stats.uniqueValid} valid ASIN${stats.uniqueValid !== 1 ? 's' : ''}`} 
+                              color="success" 
+                              sx={{ height: 20 }}
+                            />
+                            {stats.invalid > 0 && (
+                              <Chip 
+                                size="small" 
+                                label={`${stats.invalid} invalid`} 
+                                color="warning" 
+                                sx={{ height: 20 }}
+                              />
+                            )}
+                            {stats.duplicates > 0 && (
+                              <Chip 
+                                size="small" 
+                                label={`${stats.duplicates} duplicate${stats.duplicates !== 1 ? 's' : ''}`} 
+                                color="info" 
+                                sx={{ height: 20 }}
+                              />
+                            )}
+                            {stats.uniqueValid > 50 && (
+                              <Chip 
+                                size="small" 
+                                label="Exceeds limit (50 max)" 
+                                color="error" 
+                                sx={{ height: 20 }}
+                              />
+                            )}
+                          </Stack>
+                        );
+                      })()
+                      : ''
+                  }
                 />
                 
                 <Stack direction="row" spacing={2}>
