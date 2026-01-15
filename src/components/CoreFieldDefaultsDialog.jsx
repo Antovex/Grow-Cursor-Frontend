@@ -34,19 +34,8 @@ const CORE_FIELD_SECTIONS = [
       { 
         key: 'conditionId', 
         label: 'Condition ID', 
-        type: 'select',
-        options: [
-          { value: '1000', label: 'New' },
-          { value: '1500', label: 'New other' },
-          { value: '1750', label: 'New with defects' },
-          { value: '2000', label: 'Manufacturer refurbished' },
-          { value: '2500', label: 'Seller refurbished' },
-          { value: '3000', label: 'Used' },
-          { value: '4000', label: 'Very Good' },
-          { value: '5000', label: 'Good' },
-          { value: '6000', label: 'Acceptable' },
-          { value: '7000', label: 'For parts or not working' }
-        ]
+        type: 'text',
+        placeholder: 'e.g., 1000 (New), 3000 (Used), 2000 (Refurbished)'
       },
       { 
         key: 'format', 

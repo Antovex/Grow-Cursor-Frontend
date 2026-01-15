@@ -216,10 +216,10 @@ export default function TemplateListingsPage() {
       format: defaults.format || 'FixedPrice',
       duration: defaults.duration || 'GTC',
       buyItNowPrice: defaults.buyItNowPrice || '',
-      bestOfferEnabled: defaults.bestOfferEnabled || false,
+      bestOfferEnabled: defaults.bestOfferEnabled === true || defaults.bestOfferEnabled === 'true' ? true : false,
       bestOfferAutoAcceptPrice: defaults.bestOfferAutoAcceptPrice || '',
       minimumBestOfferPrice: defaults.minimumBestOfferPrice || '',
-      immediatePayRequired: defaults.immediatePayRequired || false,
+      immediatePayRequired: defaults.immediatePayRequired === true || defaults.immediatePayRequired === 'true' ? true : false,
       location: defaults.location || '',
       shippingService1Option: defaults.shippingService1Option || '',
       shippingService1Cost: defaults.shippingService1Cost || '',
@@ -263,10 +263,10 @@ export default function TemplateListingsPage() {
       format: listing.format || 'FixedPrice',
       duration: listing.duration || 'GTC',
       buyItNowPrice: listing.buyItNowPrice || '',
-      bestOfferEnabled: listing.bestOfferEnabled || false,
+      bestOfferEnabled: listing.bestOfferEnabled === true || listing.bestOfferEnabled === 'true' ? true : false,
       bestOfferAutoAcceptPrice: listing.bestOfferAutoAcceptPrice || '',
       minimumBestOfferPrice: listing.minimumBestOfferPrice || '',
-      immediatePayRequired: listing.immediatePayRequired || false,
+      immediatePayRequired: listing.immediatePayRequired === true || listing.immediatePayRequired === 'true' ? true : false,
       location: listing.location || '',
       shippingService1Option: listing.shippingService1Option || '',
       shippingService1Cost: listing.shippingService1Cost || '',
@@ -1069,11 +1069,11 @@ export default function TemplateListingsPage() {
                   label="Best Offer enabled"
                   select
                   fullWidth
-                  value={listingFormData.bestOfferEnabled}
+                  value={String(listingFormData.bestOfferEnabled)}
                   onChange={(e) => setListingFormData({ ...listingFormData, bestOfferEnabled: e.target.value === 'true' })}
                 >
-                  <MenuItem value={false}>No</MenuItem>
-                  <MenuItem value={true}>Yes</MenuItem>
+                  <MenuItem value="false">No</MenuItem>
+                  <MenuItem value="true">Yes</MenuItem>
                 </TextField>
                 <TextField
                   label="Best Offer auto accept price"
@@ -1093,11 +1093,11 @@ export default function TemplateListingsPage() {
                   label="Immediate pay required"
                   select
                   fullWidth
-                  value={listingFormData.immediatePayRequired}
+                  value={String(listingFormData.immediatePayRequired)}
                   onChange={(e) => setListingFormData({ ...listingFormData, immediatePayRequired: e.target.value === 'true' })}
                 >
-                  <MenuItem value={false}>No</MenuItem>
-                  <MenuItem value={true}>Yes</MenuItem>
+                  <MenuItem value="false">No</MenuItem>
+                  <MenuItem value="true">Yes</MenuItem>
                 </TextField>
               </Stack>
             )}
