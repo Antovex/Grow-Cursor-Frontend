@@ -521,13 +521,28 @@ export default function TemplateListingsPage() {
     setSuccess('');
 
     try {
-      // Prepare listings for bulk create
-      const listings = validResults.map(result => ({
-        ...result.autoFilledData.coreFields,
-        customFields: result.autoFilledData.customFields,
-        customLabel: result.sku,
-        _asinReference: result.asin
-      }));
+      // Get template defaults
+      const defaults = template?.coreFieldDefaults || {};
+      console.log('📋 Applying defaults to bulk listings:', defaults);
+      
+      // Prepare listings for bulk create - merge defaults with autofilled data
+      const listings = validResults.map(result => {
+        // Start with defaults as base layer
+        const mergedCoreFields = {
+          ...defaults,
+          // Auto-filled data overrides defaults
+          ...result.autoFilledData.coreFields
+        };
+        
+        return {
+          ...mergedCoreFields,
+          customFields: result.autoFilledData.customFields,
+          customLabel: result.sku,
+          _asinReference: result.asin
+        };
+      });
+
+      console.log('📤 Sending bulk listings with defaults applied:', listings);
 
       const { data } = await api.post('/template-listings/bulk-create', {
         templateId,
