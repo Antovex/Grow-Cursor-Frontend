@@ -20,6 +20,7 @@ import api from '../../lib/api.js';
 import BulkListingPreview from '../../components/BulkListingPreview.jsx';
 import CoreFieldDefaultsDialog from '../../components/CoreFieldDefaultsDialog.jsx';
 import { parseAsins, getParsingStats, getValidationError } from '../../utils/asinParser.js';
+import { generateSKUFromASIN } from '../../utils/skuGenerator.js';
 
 export default function TemplateListingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -407,10 +408,14 @@ export default function TemplateListingsPage() {
 
       const { coreFields, customFields } = data.autoFilledData;
 
+      // Generate SKU from ASIN
+      const generatedSKU = generateSKUFromASIN(asinInput.trim());
+
       // Populate form with auto-filled data
       setListingFormData({
         ...listingFormData,
         ...coreFields,
+        customLabel: generatedSKU, // Auto-generated SKU
         customFields: {
           ...listingFormData.customFields,
           ...customFields
@@ -421,6 +426,7 @@ export default function TemplateListingsPage() {
       // Track which fields were auto-filled (prefix custom fields with 'custom_')
       const allFilledFields = new Set([
         ...Object.keys(coreFields),
+        'customLabel', // Mark SKU as auto-filled
         ...Object.keys(customFields).map(k => `custom_${k}`)
       ]);
       setAutoFilledFields(allFilledFields);
@@ -494,7 +500,7 @@ export default function TemplateListingsPage() {
       // Add auto-generated SKUs to results
       const resultsWithSKUs = data.results.map(result => ({
         ...result,
-        sku: result.asin // Default SKU, user can edit
+        sku: generateSKUFromASIN(result.asin) // Auto-generated SKU: GRW25 + last 5 chars
       }));
 
       setBulkResults(resultsWithSKUs);
@@ -524,7 +530,7 @@ export default function TemplateListingsPage() {
       if (data.results.length > 0) {
         const newResult = {
           ...data.results[0],
-          sku: data.results[0].asin
+          sku: generateSKUFromASIN(data.results[0].asin)
         };
 
         setBulkResults(bulkResults.map(r => 
