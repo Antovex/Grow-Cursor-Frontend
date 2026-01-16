@@ -4,7 +4,8 @@ import {
   Box, Button, Paper, Stack, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Typography, IconButton, Dialog, DialogTitle, 
   DialogContent, DialogActions, Alert, Pagination, TextField, Tabs, Tab, MenuItem,
-  Chip, CircularProgress, Switch, FormControlLabel, LinearProgress
+  Chip, CircularProgress, Switch, FormControlLabel, LinearProgress, FormControl,
+  InputLabel, Select
 } from '@mui/material';
 import { 
   Delete as DeleteIcon, 
@@ -30,6 +31,11 @@ export default function TemplateListingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Seller state
+  const [sellers, setSellers] = useState([]);
+  const [selectedSeller, setSelectedSeller] = useState('');
+  const [loadingSellers, setLoadingSellers] = useState(false);
 
   const [addEditDialog, setAddEditDialog] = useState(false);
   const [editingListing, setEditingListing] = useState(null);
@@ -138,9 +144,23 @@ export default function TemplateListingsPage() {
   useEffect(() => {
     if (templateId) {
       fetchTemplate();
+      fetchSellers();
       fetchListings();
     }
-  }, [templateId, pagination.page]);
+  }, [templateId, pagination.page, selectedSeller]);
+
+  const fetchSellers = async () => {
+    try {
+      setLoadingSellers(true);
+      const { data } = await api.get('/sellers/all');
+      setSellers(data || []);
+    } catch (err) {
+      console.error('Failed to fetch sellers:', err);
+      setError('Failed to fetch sellers');
+    } finally {
+      setLoadingSellers(false);
+    }
+  };
 
   const fetchTemplate = async () => {
     try {
@@ -155,7 +175,11 @@ export default function TemplateListingsPage() {
   const fetchListings = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get(`/template-listings?templateId=${templateId}&page=${pagination.page}&limit=${pagination.limit}`);
+      let url = `/template-listings?templateId=${templateId}&page=${pagination.page}&limit=${pagination.limit}`;
+      if (selectedSeller) {
+        url += `&sellerId=${selectedSeller}`;
+      }
+      const { data } = await api.get(url);
       setListings(data.listings || []);
       setPagination(data.pagination);
     } catch (err) {
@@ -292,6 +316,11 @@ export default function TemplateListingsPage() {
     setError('');
     setSuccess('');
 
+    if (!selectedSeller) {
+      setError('Please select a seller first');
+      return;
+    }
+
     if (!listingFormData.customLabel) {
       setError('SKU is required');
       return;
@@ -311,7 +340,8 @@ export default function TemplateListingsPage() {
       setLoading(true);
       const dataToSend = {
         ...listingFormData,
-        templateId
+        templateId,
+        sellerId: selectedSeller
       };
 
       if (editingListing) {
@@ -421,6 +451,11 @@ export default function TemplateListingsPage() {
       return;
     }
 
+    if (!selectedSeller) {
+      setAsinError('Please select a seller first');
+      return;
+    }
+
     setAsinError('');
     setAsinSuccess('');
     setLoadingBulk(true);
@@ -452,7 +487,8 @@ export default function TemplateListingsPage() {
 
       const { data } = await api.post('/template-listings/bulk-autofill-from-asins', {
         asins,
-        templateId
+        templateId,
+        sellerId: selectedSeller
       });
 
       // Add auto-generated SKUs to results
@@ -516,6 +552,11 @@ export default function TemplateListingsPage() {
       return;
     }
 
+    if (!selectedSeller) {
+      setError('Please select a seller first');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -546,6 +587,7 @@ export default function TemplateListingsPage() {
 
       const { data } = await api.post('/template-listings/bulk-create', {
         templateId,
+        sellerId: selectedSeller,
         listings,
         options: {
           autoGenerateSKU: true,
@@ -583,14 +625,23 @@ export default function TemplateListingsPage() {
   const handleExportCSV = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/template-listings/export-csv/${templateId}`, {
+      let url = `/template-listings/export-csv/${templateId}`;
+      if (selectedSeller) {
+        url += `?sellerId=${selectedSeller}`;
+      }
+      
+      const response = await api.get(url, {
         responseType: 'blob'
       });
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const sellerName = selectedSeller 
+        ? sellers.find(s => s._id === selectedSeller)?.user?.username || sellers.find(s => s._id === selectedSeller)?.user?.email || 'seller'
+        : 'all-sellers';
+      
+      const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${template?.name || 'listings'}_${Date.now()}.csv`);
+      link.href = downloadUrl;
+      link.setAttribute('download', `${template?.name || 'listings'}_${sellerName}_${Date.now()}.csv`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -651,8 +702,48 @@ export default function TemplateListingsPage() {
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
+      {/* Seller Filter */}
+      <Box sx={{ mb: 2 }}>
+        <FormControl fullWidth>
+          <InputLabel>Filter by Seller</InputLabel>
+          <Select
+            value={selectedSeller}
+            onChange={(e) => setSelectedSeller(e.target.value)}
+            label="Filter by Seller"
+            disabled={loadingSellers}
+          >
+            <MenuItem value="">All Sellers</MenuItem>
+            {sellers.map((seller) => (
+              <MenuItem key={seller._id} value={seller._id}>
+                {seller.user?.username || seller.user?.email || 'Unknown Seller'}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        
+        {selectedSeller && (
+          <Chip 
+            label={`Viewing: ${sellers.find(s => s._id === selectedSeller)?.user?.username || sellers.find(s => s._id === selectedSeller)?.user?.email || 'Unknown'}`}
+            onDelete={() => setSelectedSeller('')}
+            color="primary"
+            sx={{ mt: 1 }}
+          />
+        )}
+        
+        {!selectedSeller && (
+          <Alert severity="info" sx={{ mt: 1 }}>
+            Please select a seller to add or manage listings
+          </Alert>
+        )}
+      </Box>
+
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddListing}>
+        <Button 
+          variant="contained" 
+          startIcon={<AddIcon />} 
+          onClick={handleAddListing}
+          disabled={!selectedSeller}
+        >
           Add Listing
         </Button>
         <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportCSV} disabled={loading || listings.length === 0}>
