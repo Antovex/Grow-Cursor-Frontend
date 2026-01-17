@@ -37,22 +37,29 @@ const STATUS_COLUMNS = [
   { key: 'resolved', label: 'Resolved' }
 ];
 
-export default function WorksheetPage() {
+export default function WorksheetPage({
+  dateFilter: dateFilterProp,
+  hideDateFilter = false,
+  embedded = false
+}) {
   const [statistics, setStatistics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState(null);
 
-  const [dateFilter, setDateFilter] = useState({
+  const [internalDateFilter, setInternalDateFilter] = useState({
     mode: 'single',
     single: new Date().toISOString().split('T')[0],
     from: '',
     to: ''
   });
+  const dateFilter = useMemo(
+    () => dateFilterProp ?? internalDateFilter,
+    [dateFilterProp, internalDateFilter]
+  );
 
   useEffect(() => {
     fetchStatistics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFilter]);
 
   const fetchStatistics = async () => {
@@ -61,13 +68,14 @@ export default function WorksheetPage() {
       setError('');
 
       const params = {};
-      if (dateFilter.mode === 'single' && dateFilter.single) {
+      if ((dateFilter.mode === 'single') && dateFilter.single) {
         params.startDate = dateFilter.single;
         params.endDate = dateFilter.single;
       } else if (dateFilter.mode === 'range') {
         if (dateFilter.from) params.startDate = dateFilter.from;
         if (dateFilter.to) params.endDate = dateFilter.to;
       }
+      // mode 'all' or 'none' => no params
 
       const [statsResponse, summaryResponse] = await Promise.all([
         api.get('/orders/worksheet-statistics', { params }),
@@ -175,7 +183,7 @@ export default function WorksheetPage() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={embedded ? {} : { p: 3 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Box>
           <Typography variant="h4" gutterBottom>
@@ -193,57 +201,8 @@ export default function WorksheetPage() {
         />
       </Stack>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel id="date-mode-label">Date Mode</InputLabel>
-            <Select
-              labelId="date-mode-label"
-              value={dateFilter.mode}
-              label="Date Mode"
-              onChange={(e) => setDateFilter(prev => ({ ...prev, mode: e.target.value }))}
-            >
-              <MenuItem value="none">None</MenuItem>
-              <MenuItem value="single">Single Day</MenuItem>
-              <MenuItem value="range">Date Range</MenuItem>
-            </Select>
-          </FormControl>
-
-          {dateFilter.mode === 'single' && (
-            <TextField
-              label="Date"
-              type="date"
-              value={dateFilter.single}
-              onChange={(e) => setDateFilter(prev => ({ ...prev, single: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
-              size="small"
-              sx={{ minWidth: 200 }}
-            />
-          )}
-
-          {dateFilter.mode === 'range' && (
-            <>
-              <TextField
-                label="From"
-                type="date"
-                value={dateFilter.from}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, from: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-                size="small"
-                sx={{ minWidth: 200 }}
-              />
-              <TextField
-                label="To"
-                type="date"
-                value={dateFilter.to}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-                size="small"
-                sx={{ minWidth: 200 }}
-              />
-            </>
-          )}
-
+      {hideDateFilter && (
+        <Box sx={{ mb: 2 }}>
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
@@ -253,8 +212,73 @@ export default function WorksheetPage() {
           >
             Refresh
           </Button>
-        </Stack>
-      </Paper>
+        </Box>
+      )}
+
+      {!hideDateFilter && (
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel id="date-mode-label">Date Mode</InputLabel>
+              <Select
+                labelId="date-mode-label"
+                value={dateFilter.mode}
+                label="Date Mode"
+                onChange={(e) => setInternalDateFilter(prev => ({ ...prev, mode: e.target.value }))}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="single">Single Day</MenuItem>
+                <MenuItem value="range">Date Range</MenuItem>
+              </Select>
+            </FormControl>
+
+            {dateFilter.mode === 'single' && (
+              <TextField
+                label="Date"
+                type="date"
+                value={dateFilter.single}
+                onChange={(e) => setInternalDateFilter(prev => ({ ...prev, single: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                sx={{ minWidth: 200 }}
+              />
+            )}
+
+            {dateFilter.mode === 'range' && (
+              <>
+                <TextField
+                  label="From"
+                  type="date"
+                  value={dateFilter.from}
+                  onChange={(e) => setInternalDateFilter(prev => ({ ...prev, from: e.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={{ minWidth: 200 }}
+                />
+                <TextField
+                  label="To"
+                  type="date"
+                  value={dateFilter.to}
+                  onChange={(e) => setInternalDateFilter(prev => ({ ...prev, to: e.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={{ minWidth: 200 }}
+                />
+              </>
+            )}
+
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={fetchStatistics}
+              disabled={loading}
+              size="small"
+            >
+              Refresh
+            </Button>
+          </Stack>
+        </Paper>
+      )}
 
       {/* Summary Cards */}
       {summary && (

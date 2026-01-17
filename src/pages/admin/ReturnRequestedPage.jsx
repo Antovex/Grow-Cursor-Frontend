@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -30,7 +30,11 @@ import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import ClearIcon from '@mui/icons-material/Clear';
 import api from '../../lib/api';
 
-export default function ReturnRequestedPage() {
+export default function ReturnRequestedPage({
+  dateFilter: dateFilterProp,
+  hideDateFilter = false,
+  embedded = false
+}) {
   const [returns, setReturns] = useState([]);
   const [sellers, setSellers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -51,12 +55,16 @@ export default function ReturnRequestedPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [sellerFilter, setSellerFilter] = useState('');
   const [reasonFilter, setReasonFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState({
+  const [internalDateFilter, setInternalDateFilter] = useState({
     mode: 'all',
     single: '',
     from: '',
     to: ''
   });
+  const dateFilter = useMemo(
+    () => dateFilterProp ?? internalDateFilter,
+    [dateFilterProp, internalDateFilter]
+  );
   
   const hasFetchedInitialData = useRef(false);
 
@@ -198,7 +206,7 @@ export default function ReturnRequestedPage() {
     setStatusFilter('');
     setSellerFilter('');
     setReasonFilter('');
-    setDateFilter({ mode: 'all', single: '', from: '', to: '' });
+    setInternalDateFilter({ mode: 'all', single: '', from: '', to: '' });
   };
 
   const handleWorksheetStatusChange = async (returnId, newStatus) => {
@@ -255,10 +263,8 @@ export default function ReturnRequestedPage() {
     statusFilter ||
     sellerFilter ||
     reasonFilter ||
-    dateFilter.mode !== 'all' ||
-    dateFilter.single ||
-    dateFilter.from ||
-    dateFilter.to;
+    (!hideDateFilter &&
+      (dateFilter.mode !== 'all' || dateFilter.single || dateFilter.from || dateFilter.to));
 
   // Check if response due date is within next 2 days (urgent)
   const isResponseUrgent = (responseDate) => {
@@ -276,15 +282,21 @@ export default function ReturnRequestedPage() {
   };
 
   return (
-    <Box sx={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: 'calc(100vh - 100px)',
-      overflow: 'hidden',
-      width: '100%',
-      maxWidth: '100%',
-      p: 3
-    }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        ...(embedded
+          ? { width: '100%', maxWidth: '100%' }
+          : {
+              height: 'calc(100vh - 100px)',
+              overflow: 'hidden',
+              width: '100%',
+              maxWidth: '100%',
+              p: 3
+            })
+      }}
+    >
       <Stack direction="row" alignItems="center" spacing={2} mb={3} sx={{ flexShrink: 0 }}>
         <AssignmentReturnIcon sx={{ fontSize: 32, color: 'primary.main' }} />
         <Typography variant="h4">Return Requests</Typography>
@@ -390,68 +402,78 @@ export default function ReturnRequestedPage() {
             </Select>
           </FormControl>
 
-          {/* Date Filter */}
-          <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel>Date</InputLabel>
-            <Select
-              value={dateFilter.mode}
-              label="Date"
-              onChange={(e) => {
-                const mode = e.target.value;
-                if (mode === 'all') {
-                  setDateFilter({ mode: 'all', single: '', from: '', to: '' });
-                } else if (mode === 'single') {
-                  setDateFilter((prev) => ({
-                    mode: 'single',
-                    single: prev.single || new Date().toISOString().split('T')[0],
-                    from: '',
-                    to: ''
-                  }));
-                } else {
-                  setDateFilter((prev) => ({
-                    mode: 'range',
-                    single: '',
-                    from: prev.from || '',
-                    to: prev.to || ''
-                  }));
-                }
-              }}
-            >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="single">Single date</MenuItem>
-              <MenuItem value="range">Date range</MenuItem>
-            </Select>
-          </FormControl>
-
-          {dateFilter.mode === 'single' && (
-            <TextField
-              size="small"
-              type="date"
-              label="On"
-              value={dateFilter.single}
-              onChange={(e) => setDateFilter({ ...dateFilter, single: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
-          )}
-
-          {dateFilter.mode === 'range' && (
+          {!hideDateFilter && (
             <>
-              <TextField
-                size="small"
-                type="date"
-                label="From"
-                value={dateFilter.from}
-                onChange={(e) => setDateFilter({ ...dateFilter, from: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                size="small"
-                type="date"
-                label="To"
-                value={dateFilter.to}
-                onChange={(e) => setDateFilter({ ...dateFilter, to: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
+              {/* Date Filter */}
+              <FormControl size="small" sx={{ minWidth: 160 }}>
+                <InputLabel>Date</InputLabel>
+                <Select
+                  value={dateFilter.mode}
+                  label="Date"
+                  onChange={(e) => {
+                    const mode = e.target.value;
+                    if (mode === 'all') {
+                      setInternalDateFilter({ mode: 'all', single: '', from: '', to: '' });
+                    } else if (mode === 'single') {
+                      setInternalDateFilter((prev) => ({
+                        mode: 'single',
+                        single: prev.single || new Date().toISOString().split('T')[0],
+                        from: '',
+                        to: ''
+                      }));
+                    } else {
+                      setInternalDateFilter((prev) => ({
+                        mode: 'range',
+                        single: '',
+                        from: prev.from || '',
+                        to: prev.to || ''
+                      }));
+                    }
+                  }}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="single">Single date</MenuItem>
+                  <MenuItem value="range">Date range</MenuItem>
+                </Select>
+              </FormControl>
+
+              {dateFilter.mode === 'single' && (
+                <TextField
+                  size="small"
+                  type="date"
+                  label="On"
+                  value={dateFilter.single}
+                  onChange={(e) =>
+                    setInternalDateFilter((prev) => ({ ...prev, single: e.target.value }))
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              )}
+
+              {dateFilter.mode === 'range' && (
+                <>
+                  <TextField
+                    size="small"
+                    type="date"
+                    label="From"
+                    value={dateFilter.from}
+                    onChange={(e) =>
+                      setInternalDateFilter((prev) => ({ ...prev, from: e.target.value }))
+                    }
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <TextField
+                    size="small"
+                    type="date"
+                    label="To"
+                    value={dateFilter.to}
+                    onChange={(e) =>
+                      setInternalDateFilter((prev) => ({ ...prev, to: e.target.value }))
+                    }
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </>
+              )}
             </>
           )}
 
@@ -480,7 +502,7 @@ export default function ReturnRequestedPage() {
           sx={{ 
             flexGrow: 1, 
             overflow: 'auto',
-            maxHeight: 'calc(100% - 50px)',
+            ...(embedded ? {} : { maxHeight: 'calc(100% - 50px)' }),
             width: '100%',
             '&::-webkit-scrollbar': {
               width: '8px',
@@ -550,12 +572,12 @@ export default function ReturnRequestedPage() {
                         <Typography 
                           variant="body2" 
                           fontSize="0.75rem"
-                          color={isResponseOverdue(ret.responseDate) ? 'error' : 'inherit'}
-                          fontWeight={isResponseOverdue(ret.responseDate) || isResponseUrgent(ret.responseDate) ? 'bold' : 'normal'}
+                          color={ret.returnStatus !== 'CLOSED' && isResponseOverdue(ret.responseDate) ? 'error' : 'inherit'}
+                          fontWeight={ret.returnStatus !== 'CLOSED' && (isResponseOverdue(ret.responseDate) || isResponseUrgent(ret.responseDate)) ? 'bold' : 'normal'}
                         >
                           {formatDate(ret.responseDate)}
                         </Typography>
-                        {isResponseOverdue(ret.responseDate) && (
+                        {ret.returnStatus !== 'CLOSED' && isResponseOverdue(ret.responseDate) && (
                           <Chip 
                             label="OVERDUE" 
                             size="small" 
@@ -568,7 +590,7 @@ export default function ReturnRequestedPage() {
                             }} 
                           />
                         )}
-                        {!isResponseOverdue(ret.responseDate) && isResponseUrgent(ret.responseDate) && (
+                        {ret.returnStatus !== 'CLOSED' && !isResponseOverdue(ret.responseDate) && isResponseUrgent(ret.responseDate) && (
                           <Chip 
                             label="URGENT" 
                             size="small" 
