@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Paper,
@@ -25,16 +25,23 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import api from '../../lib/api';
 
-export default function CancelledStatusPage() {
+export default function CancelledStatusPage({
+  dateFilter: dateFilterProp,
+  hideDateFilter = false
+}) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [dateFilter, setDateFilter] = useState({
+  const [internalDateFilter, setInternalDateFilter] = useState({
     mode: 'all',
     single: '',
     from: '',
     to: ''
   });
+  const dateFilter = useMemo(
+    () => dateFilterProp ?? internalDateFilter,
+    [dateFilterProp, internalDateFilter]
+  );
 
   useEffect(() => {
     fetchCancelledOrders();
@@ -134,53 +141,57 @@ export default function CancelledStatusPage() {
           )}
         </Stack>
 
-        {/* Date Filter */}
-        <Stack direction="row" alignItems="center" spacing={2} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
-          <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>Date</InputLabel>
-            <Select
-              value={dateFilter.mode}
-              onChange={(e) => setDateFilter({...dateFilter, mode: e.target.value})}
-              label="Date"
-            >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="single">Single Date</MenuItem>
-              <MenuItem value="range">Date Range</MenuItem>
-            </Select>
-          </FormControl>
+        {!hideDateFilter && (
+          <>
+            {/* Date Filter */}
+            <Stack direction="row" alignItems="center" spacing={2} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 140 }}>
+                <InputLabel>Date</InputLabel>
+                <Select
+                  value={dateFilter.mode}
+                  onChange={(e) => setInternalDateFilter({ ...dateFilter, mode: e.target.value })}
+                  label="Date"
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="single">Single Date</MenuItem>
+                  <MenuItem value="range">Date Range</MenuItem>
+                </Select>
+              </FormControl>
 
-          {dateFilter.mode === 'single' && (
-            <TextField
-              type="date"
-              size="small"
-              value={dateFilter.single}
-              onChange={(e) => setDateFilter({...dateFilter, single: e.target.value})}
-              InputLabelProps={{ shrink: true }}
-            />
-          )}
+              {dateFilter.mode === 'single' && (
+                <TextField
+                  type="date"
+                  size="small"
+                  value={dateFilter.single}
+                  onChange={(e) => setInternalDateFilter({ ...dateFilter, single: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                />
+              )}
 
-          {dateFilter.mode === 'range' && (
-            <>
-              <TextField
-                type="date"
-                size="small"
-                value={dateFilter.from}
-                onChange={(e) => setDateFilter({...dateFilter, from: e.target.value})}
-                label="From"
-                InputLabelProps={{ shrink: true }}
-              />
-              <Typography variant="body2">to</Typography>
-              <TextField
-                type="date"
-                size="small"
-                value={dateFilter.to}
-                onChange={(e) => setDateFilter({...dateFilter, to: e.target.value})}
-                label="To"
-                InputLabelProps={{ shrink: true }}
-              />
-            </>
-          )}
-        </Stack>
+              {dateFilter.mode === 'range' && (
+                <>
+                  <TextField
+                    type="date"
+                    size="small"
+                    value={dateFilter.from}
+                    onChange={(e) => setInternalDateFilter({ ...dateFilter, from: e.target.value })}
+                    label="From"
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <Typography variant="body2">to</Typography>
+                  <TextField
+                    type="date"
+                    size="small"
+                    value={dateFilter.to}
+                    onChange={(e) => setInternalDateFilter({ ...dateFilter, to: e.target.value })}
+                    label="To"
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </>
+              )}
+            </Stack>
+          </>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mt: 2 }}>

@@ -31,7 +31,13 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import ClearIcon from '@mui/icons-material/Clear';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PaymentIcon from '@mui/icons-material/Payment';
+import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
+import CancelIcon from '@mui/icons-material/Cancel';
+import ListAltIcon from '@mui/icons-material/ListAlt';
 import api from '../../lib/api';
+import ReturnRequestedPage from './ReturnRequestedPage.jsx';
+import CancelledStatusPage from './CancelledStatusPage.jsx';
+import WorksheetPage from './WorksheetPage.jsx';
 
 function TabPanel({ children, value, index }) {
   return (
@@ -41,8 +47,11 @@ function TabPanel({ children, value, index }) {
   );
 }
 
-export default function DisputesPage() {
-  const [tabValue, setTabValue] = useState(0);
+export default function DisputesPage({ initialTab = 0 }) {
+  const [tabValue, setTabValue] = useState(initialTab);
+  useEffect(() => {
+    setTabValue(initialTab);
+  }, [initialTab]);
   
   // INR Cases state
   const [cases, setCases] = useState([]);
@@ -380,7 +389,7 @@ export default function DisputesPage() {
     <Box sx={{ p: 3 }}>
       <Stack direction="row" alignItems="center" spacing={2} mb={3}>
         <GavelIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-        <Typography variant="h4">INR Cases & Payment Disputes</Typography>
+        <Typography variant="h4">Issues and Resolutions</Typography>
       </Stack>
 
       {error && (
@@ -469,6 +478,21 @@ export default function DisputesPage() {
           <Tab 
             icon={<PaymentIcon />} 
             label={`Payment Disputes (${disputes.length})`}
+            iconPosition="start"
+          />
+          <Tab
+            icon={<AssignmentReturnIcon />}
+            label="Return Requests"
+            iconPosition="start"
+          />
+          <Tab
+            icon={<CancelIcon />}
+            label="Cancelled Status"
+            iconPosition="start"
+          />
+          <Tab
+            icon={<ListAltIcon />}
+            label="Worksheet"
             iconPosition="start"
           />
         </Tabs>
@@ -944,6 +968,21 @@ export default function DisputesPage() {
             </Table>
           </TableContainer>
         )}
+      </TabPanel>
+
+      {/* Return Requests Tab */}
+      <TabPanel value={tabValue} index={2}>
+        <ReturnRequestedPage dateFilter={dateFilter} hideDateFilter embedded />
+      </TabPanel>
+
+      {/* Cancelled Status Tab */}
+      <TabPanel value={tabValue} index={3}>
+        <CancelledStatusPage dateFilter={dateFilter} hideDateFilter />
+      </TabPanel>
+
+      {/* Worksheet Tab */}
+      <TabPanel value={tabValue} index={4}>
+        <WorksheetPage dateFilter={dateFilter} hideDateFilter embedded />
       </TabPanel>
     </Box>
   );

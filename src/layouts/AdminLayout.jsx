@@ -62,11 +62,10 @@ import AwaitingShipmentPage from '../pages/admin/AwaitingShipmentPage.jsx';
 import AmazonArrivalsPage from '../pages/admin/AmazonArrivalsPage.jsx';
 import FulfillmentNotesPage from '../pages/admin/FulfillmentNotesPage.jsx';
 import ConversationTrackingPage from '../pages/admin/ConversationTrackingPage.jsx';
-import CancelledStatusPage from '../pages/admin/CancelledStatusPage.jsx';
+// CancelledStatusPage is now embedded in Issues and Resolutions (DisputesPage)
 import ReturnPage from '../pages/admin/ReturnPage.jsx';
 import ReplacePage from '../pages/admin/ReplacePage.jsx';
 import INRPage from '../pages/admin/INRPage.jsx';
-import ReturnRequestedPage from '../pages/admin/ReturnRequestedPage.jsx';
 import DisputesPage from '../pages/admin/DisputesPage.jsx';
 import PayoneerSheetPage from '../pages/admin/PayoneerSheetPage.jsx';
 import BankAccountsPage from '../pages/admin/BankAccountsPage.jsx';
@@ -95,7 +94,7 @@ import IdeasPage from '../pages/IdeasPage.jsx';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import OrderAnalyticsPage from '../pages/admin/OrderAnalyticsPage.jsx';
 import SellerAnalyticsPage from '../pages/admin/SellerAnalyticsPage.jsx';
-import WorksheetPage from '../pages/admin/WorksheetPage.jsx';
+// WorksheetPage is now embedded in Issues and Resolutions (DisputesPage)
 import BarChartIcon from '@mui/icons-material/BarChart';
 import ChatIcon from '@mui/icons-material/Chat';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -729,15 +728,6 @@ export default function AdminLayout({ user, onLogout }) {
                   </ListItemButton>
                   <ListItemButton 
                     component={Link} 
-                    to="/admin/worksheet" 
-                    onClick={() => setMobileOpen(false)}
-                    selected={location.pathname === '/admin/worksheet'}
-                    sx={selectedMenuItemStyle}
-                  >
-                    <ListItemText primary="Worksheet" />
-                  </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
                     to="/admin/seller-analytics" 
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/seller-analytics'}
@@ -790,34 +780,19 @@ export default function AdminLayout({ user, onLogout }) {
                   >
                     <ListItemText primary="Fulfillment Notes" />
                   </ListItemButton>
-
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/cancelled-status" 
-                    onClick={() => setMobileOpen(false)}
-                    selected={location.pathname === '/admin/cancelled-status'}
-                    sx={selectedMenuItemStyle}
-                  >
-                    <ListItemText primary="Cancelled Status" />
-                  </ListItemButton>
-
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/return-requested" 
-                    onClick={() => setMobileOpen(false)}
-                    selected={location.pathname === '/admin/return-requested'}
-                    sx={selectedMenuItemStyle}
-                  >
-                    <ListItemText primary="Return Requests" />
-                  </ListItemButton>
                   <ListItemButton 
                     component={Link} 
                     to="/admin/disputes" 
                     onClick={() => setMobileOpen(false)}
-                    selected={location.pathname === '/admin/disputes'}
+                    selected={
+                      location.pathname === '/admin/disputes' ||
+                      location.pathname === '/admin/worksheet' ||
+                      location.pathname === '/admin/cancelled-status' ||
+                      location.pathname === '/admin/return-requested'
+                    }
                     sx={selectedMenuItemStyle}
                   >
-                    <ListItemText primary="INR & Disputes" />
+                    <ListItemText primary="Issues and Resolutions" />
                   </ListItemButton>
                   <ListItemButton 
                     component={Link} 
@@ -875,9 +850,6 @@ export default function AdminLayout({ user, onLogout }) {
               <MenuItem component={Link} to="/admin/order-analytics" onClick={() => setOrdersAnchorEl(null)}>
                 Order Analytics
               </MenuItem>
-              <MenuItem component={Link} to="/admin/worksheet" onClick={() => setOrdersAnchorEl(null)}>
-                Worksheet
-              </MenuItem>
               <MenuItem component={Link} to="/admin/seller-analytics" onClick={() => setOrdersAnchorEl(null)}>
                 Seller Analytics
               </MenuItem>
@@ -893,14 +865,8 @@ export default function AdminLayout({ user, onLogout }) {
               <MenuItem component={Link} to="/admin/fulfillment-notes" onClick={() => setOrdersAnchorEl(null)}>
                 Fulfillment Notes
               </MenuItem>
-              <MenuItem component={Link} to="/admin/cancelled-status" onClick={() => setOrdersAnchorEl(null)}>
-                Cancelled Status
-              </MenuItem>
-              <MenuItem component={Link} to="/admin/return-requested" onClick={() => setOrdersAnchorEl(null)}>
-                Return Requests
-              </MenuItem>
               <MenuItem component={Link} to="/admin/disputes" onClick={() => setOrdersAnchorEl(null)}>
-                INR & Disputes
+                Issues and Resolutions
               </MenuItem>
               <MenuItem component={Link} to="/admin/message-received" onClick={() => setOrdersAnchorEl(null)}>
                 Buyer Messages
@@ -1264,7 +1230,7 @@ export default function AdminLayout({ user, onLogout }) {
           {(isFulfillmentAdmin || isSuper || isHOC || isComplianceManager) && (
             <>
               <Route path="/order-analytics" element={<OrderAnalyticsPage />} />
-              <Route path="/worksheet" element={<WorksheetPage />} />
+              <Route path="/worksheet" element={<DisputesPage initialTab={4} />} />
               <Route path="/seller-analytics" element={<SellerAnalyticsPage />} />
               <Route path="/fulfillment" element={<FulfillmentDashboard />} />
               <Route path="/all-orders-sheet" element={<AllOrdersSheetPage />} />
@@ -1272,8 +1238,8 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/amazon-arrivals" element={<AmazonArrivalsPage />} />
               <Route path="/fulfillment-notes" element={<FulfillmentNotesPage />} />
               <Route path="/conversation-tracking" element={<ConversationTrackingPage />} />
-              <Route path="/cancelled-status" element={<CancelledStatusPage />} />
-              <Route path="/return-requested" element={<ReturnRequestedPage />} />
+              <Route path="/cancelled-status" element={<DisputesPage initialTab={3} />} />
+              <Route path="/return-requested" element={<DisputesPage initialTab={2} />} />
               <Route path="/disputes" element={<DisputesPage />} />
               <Route path="/message-received" element={<BuyerChatPage />} />
               <Route path="/conversation-management" element={<ConversationManagementPage />} />
