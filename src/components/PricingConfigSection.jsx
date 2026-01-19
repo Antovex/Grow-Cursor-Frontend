@@ -11,6 +11,7 @@ import {
   Alert,
   Divider
 } from '@mui/material';
+import ProfitTiersSection from './ProfitTiersSection.jsx';
 
 export default function PricingConfigSection({ pricingConfig, onChange }) {
   const handleFieldChange = (field, value) => {
@@ -77,22 +78,19 @@ export default function PricingConfigSection({ pricingConfig, onChange }) {
 
           <Divider sx={{ my: 3 }} />
 
-          {/* Profit & Fixed Costs */}
+          {/* Profit Configuration - Fixed or Tiered */}
+          <ProfitTiersSection
+            pricingConfig={pricingConfig}
+            onChange={onChange}
+          />
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Fixed Costs */}
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            Profit & Fixed Costs
+            Fixed Costs
           </Typography>
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Desired Profit (INR)"
-                type="number"
-                value={pricingConfig?.desiredProfit || ''}
-                onChange={(e) => handleFieldChange('desiredProfit', e.target.value)}
-                helperText="Target profit per item"
-                fullWidth
-                inputProps={{ step: 1, min: 0 }}
-              />
-            </Grid>
             <Grid item xs={12} md={6}>
               <TextField
                 label="Transaction/Container Fee (INR)"
@@ -191,9 +189,26 @@ export default function PricingConfigSection({ pricingConfig, onChange }) {
             <Typography variant="body2" component="div">
               <strong>Formula:</strong>
               <Box component="div" sx={{ fontFamily: 'monospace', fontSize: '0.85rem', mt: 1 }}>
-                Start Price = ((Desired Profit + (Buying Price × Spent Rate)) / Payout Rate + Fixed Fee) /{' '}
+                Start Price = ((
+                {pricingConfig?.profitTiers?.enabled ? 'Applicable Profit (from tier)' : 'Desired Profit'} + (Buying Price × Spent Rate)) / Payout Rate + Fixed Fee) /{' '}
                 (1 - (1 + Sales Tax) × (eBay Fee + Ads + TDS))
               </Box>
+              
+              {pricingConfig?.profitTiers?.enabled && pricingConfig?.profitTiers?.tiers?.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="body2" fontWeight="bold">Profit Tiers:</Typography>
+                  <Box component="ul" sx={{ mt: 0.5, pl: 2, mb: 0 }}>
+                    {pricingConfig.profitTiers.tiers.map((tier, i) => (
+                      <li key={i}>
+                        <Typography variant="caption">
+                          ${tier.minCost} - {tier.maxCost !== null ? `$${tier.maxCost}` : '∞'}: {tier.profit} INR
+                        </Typography>
+                      </li>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+              
               <Box sx={{ mt: 1 }}>
                 <strong>Where:</strong> Buying Price = Amazon Cost + Shipping + Tax (Amazon Cost × Tax Rate)
               </Box>
