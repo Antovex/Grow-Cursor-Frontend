@@ -22,6 +22,8 @@ import BulkListingPreview from '../../components/BulkListingPreview.jsx';
 import CoreFieldDefaultsDialog from '../../components/CoreFieldDefaultsDialog.jsx';
 import PricingConfigSection from '../../components/PricingConfigSection.jsx';
 import BulkImportASINsDialog from '../../components/BulkImportASINsDialog.jsx';
+import BulkReactivateDialog from '../../components/BulkReactivateDialog.jsx';
+import BulkDeactivateDialog from '../../components/BulkDeactivateDialog.jsx';
 import { parseAsins, getParsingStats, getValidationError } from '../../utils/asinParser.js';
 import { generateSKUFromASIN } from '../../utils/skuGenerator.js';
 
@@ -46,6 +48,10 @@ export default function TemplateListingsPage() {
 
   // Bulk ASIN import state
   const [bulkImportDialog, setBulkImportDialog] = useState(false);
+  
+  // SKU status management state
+  const [reactivateDialog, setReactivateDialog] = useState(false);
+  const [deactivateDialog, setDeactivateDialog] = useState(false);
 
   // Seller and pricing state
   const [seller, setSeller] = useState(null);
@@ -422,8 +428,12 @@ export default function TemplateListingsPage() {
         await api.put(`/template-listings/${editingListing._id}`, dataToSend);
         setSuccess('Listing updated successfully!');
       } else {
-        await api.post('/template-listings', dataToSend);
-        setSuccess('Listing created successfully!');
+        const response = await api.post('/template-listings', dataToSend);
+        if (response.data?.wasReactivated) {
+          setSuccess('Inactive listing reactivated successfully!');
+        } else {
+          setSuccess('Listing created successfully!');
+        }
       }
 
       setAddEditDialog(false);
@@ -675,7 +685,7 @@ export default function TemplateListingsPage() {
       });
 
       setSuccess(
-        `Bulk create completed: ${data.created} created, ${data.failed} failed, ${data.skipped} skipped`
+        `Bulk create completed: ${data.created} created, ${data.reactivated || 0} reactivated, ${data.failed} failed, ${data.skipped} skipped`
       );
 
       // Refresh listings table
@@ -936,6 +946,22 @@ export default function TemplateListingsPage() {
           disabled={!sellerId || !templateId || batchFilter !== 'active'}
         >
           Bulk Import ASINs
+        </Button>
+        <Button 
+          variant="outlined" 
+          color="success"
+          onClick={() => setReactivateDialog(true)}
+          disabled={!sellerId || !templateId}
+        >
+          Relist by SKU
+        </Button>
+        <Button 
+          variant="outlined" 
+          color="error"
+          onClick={() => setDeactivateDialog(true)}
+          disabled={!sellerId || !templateId}
+        >
+          Deactivate by SKU
         </Button>
         <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportCSV} disabled={loading || listings.length === 0}>
           Download CSV
@@ -1844,6 +1870,30 @@ export default function TemplateListingsPage() {
         onImportComplete={() => {
           fetchListings();
           setSuccess('ASINs imported successfully');
+        }}
+      />
+      
+      {/* Bulk Reactivate Dialog */}
+      <BulkReactivateDialog
+        open={reactivateDialog}
+        onClose={() => setReactivateDialog(false)}
+        templateId={templateId}
+        sellerId={sellerId}
+        onSuccess={() => {
+          fetchListings();
+          setSuccess('Listings reactivated successfully');
+        }}
+      />
+      
+      {/* Bulk Deactivate Dialog */}
+      <BulkDeactivateDialog
+        open={deactivateDialog}
+        onClose={() => setDeactivateDialog(false)}
+        templateId={templateId}
+        sellerId={sellerId}
+        onSuccess={() => {
+          fetchListings();
+          setSuccess('Listings deactivated successfully');
         }}
       />
     </Box>
