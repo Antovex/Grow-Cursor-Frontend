@@ -28,7 +28,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import LaunchIcon from '@mui/icons-material/Launch';
-import { listEmployeeProfiles, updateEmployeeProfile, getEmployeeFileUrl } from '../../lib/api.js';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import { listEmployeeProfiles, updateEmployeeProfile, getEmployeeFileUrl, deleteEmployeeProfile } from '../../lib/api.js';
+
 
 export default function EmployeeDetailsPage() {
   const [rows, setRows] = useState([]);
@@ -46,9 +48,6 @@ export default function EmployeeDetailsPage() {
     gender: '',
     address: '',
     email: '',
-    bankAccountNumber: '',
-    bankIFSC: '',
-    bankName: '',
     aadharNumber: '',
     panNumber: ''
   });
@@ -57,6 +56,10 @@ export default function EmployeeDetailsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
   const [validationErrors, setValidationErrors] = useState({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState(1);
+  const [deletingProfile, setDeletingProfile] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadProfiles = async () => {
     try {
@@ -85,9 +88,6 @@ export default function EmployeeDetailsPage() {
       gender: profile.gender || '',
       address: profile.address || '',
       email: profile.email || '',
-      bankAccountNumber: profile.bankAccountNumber || '',
-      bankIFSC: profile.bankIFSC || '',
-      bankName: profile.bankName || '',
       aadharNumber: profile.aadharNumber || '',
       panNumber: profile.panNumber || ''
     });
@@ -124,6 +124,9 @@ export default function EmployeeDetailsPage() {
     }
     if (!editForm.workingMode || editForm.workingMode.trim() === '') {
       errors.workingMode = 'Working Mode is required';
+    }
+    if (!editForm.gender || editForm.gender.trim() === '') {
+      errors.gender = 'Gender is required';
     }
 
     setValidationErrors(errors);
@@ -163,6 +166,41 @@ export default function EmployeeDetailsPage() {
       setSnack({ open: true, message: errorMsg, severity: 'error' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openDeleteDialog = (profile) => {
+    setDeletingProfile(profile);
+    setDeleteConfirmStep(1);
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setDeletingProfile(null);
+    setDeleteConfirmStep(1);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (deleteConfirmStep === 1) {
+      // Move to second confirmation step
+      setDeleteConfirmStep(2);
+      return;
+    }
+
+    // Proceed with deletion
+    setDeleting(true);
+    try {
+      await deleteEmployeeProfile(deletingProfile._id);
+      await loadProfiles();
+      setSnack({ open: true, message: `Employee "${deletingProfile.user?.username}" permanently deleted.`, severity: 'success' });
+      closeDeleteDialog();
+    } catch (err) {
+      console.error('Failed to delete employee', err);
+      const errorMsg = err.response?.data?.details || err.response?.data?.error || 'Failed to delete employee. Please try again.';
+      setSnack({ open: true, message: errorMsg, severity: 'error' });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -232,11 +270,18 @@ export default function EmployeeDetailsPage() {
                           <Typography variant="body2" color="text.secondary" noWrap sx={{ mt: 0.5 }}>{r.user?.department || '-'}</Typography>
                         </Box>
                       </Box>
-                      <Tooltip title="Manage Employee Details">
-                        <IconButton onClick={() => openEdit(r)} color="primary">
-                          <ManageAccountsIcon />
-                        </IconButton>
-                      </Tooltip>
+                      <Box>
+                        <Tooltip title="Manage Employee Details">
+                          <IconButton onClick={() => openEdit(r)} color="primary" size="small">
+                            <ManageAccountsIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Employee (Permanent)">
+                          <IconButton onClick={() => openDeleteDialog(r)} color="error" size="small">
+                            <DeleteForeverIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </Stack>
                   </CardContent>
                 </Card>
@@ -451,6 +496,14 @@ export default function EmployeeDetailsPage() {
                     onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
                     disabled={!isEditing}
                     size="small"
+                    required
+                    error={!!validationErrors.gender}
+                    helperText={validationErrors.gender}
+                    sx={{
+                      '& .MuiFormLabel-asterisk': {
+                        color: 'red',
+                      },
+                    }}
                   >
                     <MenuItem value="">Select</MenuItem>
                     <MenuItem value="male">Male</MenuItem>
@@ -484,42 +537,7 @@ export default function EmployeeDetailsPage() {
                   />
                 </Grid>
 
-                {/* Bank Details */}
-                <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mt: 1, mb: 1 }}>Bank Details</Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        fullWidth
-                        label="Bank Name"
-                        value={editForm.bankName}
-                        onChange={(e) => setEditForm({ ...editForm, bankName: e.target.value })}
-                        disabled={!isEditing}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        fullWidth
-                        label="Account Number"
-                        value={editForm.bankAccountNumber}
-                        onChange={(e) => setEditForm({ ...editForm, bankAccountNumber: e.target.value })}
-                        disabled={!isEditing}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        fullWidth
-                        label="IFSC Code"
-                        value={editForm.bankIFSC}
-                        onChange={(e) => setEditForm({ ...editForm, bankIFSC: e.target.value })}
-                        disabled={!isEditing}
-                        size="small"
-                      />
-                    </Grid>
-                  </Grid>
-                </Grid>
+
 
                 {/* Documents */}
                 <Grid item xs={12}>
@@ -605,6 +623,96 @@ export default function EmployeeDetailsPage() {
           {snack.message}
         </Alert>
       </Snackbar>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={closeDeleteDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderTop: '4px solid #d32f2f'
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
+          <DeleteForeverIcon />
+          <Typography variant="h6" component="span">
+            {deleteConfirmStep === 1 ? 'Confirm Permanent Deletion' : 'Final Confirmation Required'}
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          {deleteConfirmStep === 1 ? (
+            <Box sx={{ mt: 2 }}>
+              <Alert severity="error" sx={{ mb: 3 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  ⚠️ WARNING: This action cannot be undone!
+                </Typography>
+                <Typography variant="body2">
+                  You are about to permanently delete:
+                </Typography>
+              </Alert>
+              <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1, mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">Employee</Typography>
+                <Typography variant="h6" sx={{ mb: 1 }}>{deletingProfile?.user?.username}</Typography>
+                <Chip label={deletingProfile?.user?.role || 'N/A'} size="small" color="primary" sx={{ mr: 1 }} />
+                <Chip label={deletingProfile?.user?.department || 'N/A'} size="small" />
+                <Typography variant="body2" sx={{ mt: 1 }}>{deletingProfile?.name || 'No name provided'}</Typography>
+                <Typography variant="body2" color="text.secondary">{deletingProfile?.email || 'No email'}</Typography>
+              </Box>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>This will permanently delete:</strong>
+              </Typography>
+              <Box component="ul" sx={{ m: 0, pl: 3 }}>
+                <li><Typography variant="body2">Employee profile and all personal information</Typography></li>
+                <li><Typography variant="body2">User account and login credentials</Typography></li>
+                <li><Typography variant="body2">All uploaded documents (Aadhar, PAN, Profile Picture)</Typography></li>
+                <li><Typography variant="body2">All associated data and history</Typography></li>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ mt: 2 }}>
+              <Alert severity="error" sx={{ mb: 3 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                  🚨 FINAL WARNING: You are about to permanently delete this employee!
+                </Typography>
+              </Alert>
+              <Typography variant="h6" sx={{ mb: 2, textAlign: 'center' }}>
+                Are you sure you want to proceed?
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                This action is permanent and cannot be undone.
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeDeleteDialog} disabled={deleting}>
+            Cancel
+          </Button>
+          {deleteConfirmStep === 1 ? (
+            <Button
+              onClick={handleDeleteConfirm}
+              variant="contained"
+              color="warning"
+              disabled={deleting}
+            >
+              Continue to Final Step
+            </Button>
+          ) : (
+            <Button
+              onClick={handleDeleteConfirm}
+              variant="contained"
+              color="error"
+              disabled={deleting}
+              startIcon={<DeleteForeverIcon />}
+            >
+              {deleting ? 'Deleting...' : 'Yes, Delete Permanently'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
