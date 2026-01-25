@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
-import { AppBar, Toolbar, IconButton, Box, Paper, Typography, Grid, TextField, MenuItem, Button, Stack, Snackbar, Alert, Tabs, Tab } from '@mui/material';
+import { AppBar, Toolbar, IconButton, Box, Paper, Typography, Grid, TextField, MenuItem, Button, Stack, Snackbar, Alert, Tabs, Tab, Badge } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PersonIcon from '@mui/icons-material/Person';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -156,6 +156,12 @@ export default function AboutMePage() {
 
   const isInAdminLayout = location.pathname.startsWith('/admin/');
 
+  // Check completion status
+  const isProfileComplete = form.name && form.email && form.phoneNumber && form.gender;
+  const isTaskListComplete = form.myTaskList && form.myTaskList.trim().length > 0;
+  const isPrimaryTaskComplete = form.primaryTask && form.primaryTask.trim().length > 0;
+  const isSecondaryTaskComplete = form.secondaryTask && form.secondaryTask.trim().length > 0;
+
   return (
     <Box maxWidth="1200px" mx="auto">
       {!isInAdminLayout && (
@@ -172,10 +178,26 @@ export default function AboutMePage() {
       {/* Tabs for Profile, Tasks, and Chat */}
       <Paper sx={{ mb: 2 }}>
         <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)} variant="fullWidth">
-          <Tab icon={<PersonIcon />} label="Profile" iconPosition="start" />
-          <Tab icon={<AssignmentIcon />} label="My Task List" iconPosition="start" />
-          <Tab icon={<StarIcon />} label="Primary Task" iconPosition="start" />
-          <Tab icon={<BookmarkIcon />} label="Secondary Task" iconPosition="start" />
+          <Tab icon={
+            <Badge color="error" variant="dot" invisible={isProfileComplete}>
+              <PersonIcon />
+            </Badge>
+          } label="Profile" iconPosition="start" />
+          <Tab icon={
+            <Badge color="error" variant="dot" invisible={isTaskListComplete}>
+              <AssignmentIcon />
+            </Badge>
+          } label="My Task List" iconPosition="start" />
+          <Tab icon={
+            <Badge color="error" variant="dot" invisible={isPrimaryTaskComplete}>
+              <StarIcon />
+            </Badge>
+          } label="Primary Task" iconPosition="start" />
+          <Tab icon={
+            <Badge color="error" variant="dot" invisible={isSecondaryTaskComplete}>
+              <BookmarkIcon />
+            </Badge>
+          } label="Secondary Task" iconPosition="start" />
           <Tab icon={<ChatIcon />} label="Team Chat" iconPosition="start" />
         </Tabs>
       </Paper>

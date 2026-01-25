@@ -431,7 +431,7 @@ export default function EmployeeDetailsPage() {
                   startIcon={<SecurityIcon />}
                   onClick={() => setSecretsOpen(true)}
                   variant="outlined"
-                  color="secondary"
+                  color="primary"
                   size="small"
                   sx={{ mr: 1 }}
                 >
