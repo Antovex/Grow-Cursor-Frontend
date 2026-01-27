@@ -24,7 +24,8 @@ import {
   Alert,
   Tabs,
   Tab,
-  CircularProgress
+  CircularProgress,
+  Skeleton
 } from '@mui/material';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import SearchIcon from '@mui/icons-material/Search';
@@ -37,6 +38,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import StarIcon from '@mui/icons-material/Star';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import SecurityIcon from '@mui/icons-material/Security';
+import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import { listEmployeeProfiles, updateEmployeeProfile, getEmployeeFileUrl, deleteEmployeeProfile } from '../../lib/api.js';
 
 // TabPanel component for managing tab content
@@ -106,6 +108,7 @@ export default function EmployeeDetailsPage() {
     secondaryTask: ''
   });
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
@@ -120,11 +123,14 @@ export default function EmployeeDetailsPage() {
   const [savingSecrets, setSavingSecrets] = useState(false);
 
   const loadProfiles = async () => {
+    setLoading(true);
     try {
       const list = await listEmployeeProfiles();
       setRows(list);
     } catch (e) {
       console.error('Failed to load employees', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -406,8 +412,41 @@ export default function EmployeeDetailsPage() {
               </Grid>
             );
           })}
-          {filteredRows.length === 0 && (
-            <Grid item xs={12}><Typography color="text.secondary">No employees found.</Typography></Grid>
+          {loading && (
+            <Grid item xs={12}>
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                py: 8
+              }}>
+                <CircularProgress size={60} thickness={4} />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  Loading employees...
+                </Typography>
+              </Box>
+            </Grid>
+          )}
+          {!loading && filteredRows.length === 0 && (
+            <Grid item xs={12}>
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                py: 8,
+                px: 2
+              }}>
+                <PeopleOutlineIcon sx={{ fontSize: 80, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  {search ? 'No matching employees found' : 'No employees yet'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {search ? 'Try adjusting your search terms' : 'Employee profiles will appear here once added'}
+                </Typography>
+              </Box>
+            </Grid>
           )}
         </Grid>
       </Paper>
