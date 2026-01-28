@@ -25,6 +25,7 @@ import BulkImportASINsDialog from '../../components/BulkImportASINsDialog.jsx';
 import BulkReactivateDialog from '../../components/BulkReactivateDialog.jsx';
 import BulkDeactivateDialog from '../../components/BulkDeactivateDialog.jsx';
 import TemplateListingStatsCard from '../../components/TemplateListingStatsCard.jsx';
+import ActionFieldEditor from '../../components/ActionFieldEditor.jsx';
 import { parseAsins, getParsingStats, getValidationError } from '../../utils/asinParser.js';
 import { generateSKUFromASIN } from '../../utils/skuGenerator.js';
 
@@ -986,9 +987,12 @@ export default function TemplateListingsPage() {
         >
           Deactivate by SKU
         </Button>
-        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportCSV} disabled={loading || listings.length === 0}>
-          Download CSV
-        </Button>
+        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+          <ActionFieldEditor templateId={templateId} sellerId={sellerId} />
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportCSV} disabled={loading || listings.length === 0}>
+            Download CSV
+          </Button>
+        </Box>
         <Button
           variant="outlined"
           onClick={() => setHistoryDialog(true)}
