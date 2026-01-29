@@ -71,6 +71,7 @@ import TransactionPage from '../pages/admin/TransactionPage.jsx';
 //import MessageReceivedPage from '../pages/admin/MessageReceivedPage.jsx';
 import AboutMePage from '../pages/AboutMePage.jsx';
 import EmployeeDetailsPage from '../pages/admin/EmployeeDetailsPage.jsx';
+import EmployeeManagementPage from '../pages/admin/EmployeeManagementPage.jsx';
 import BuyerChatPage from '../pages/admin/BuyerChatPage.jsx';
 import RangeAnalyzerPage from '../pages/admin/RangeAnalyzerPage.jsx';
 
@@ -142,14 +143,14 @@ export default function AdminLayout({ user, onLogout }) {
   const [compatMenuOpen, setCompatMenuOpen] = useState(false);
   const [ordersMenuOpen, setOrdersMenuOpen] = useState(false);
   const [manageMenuOpen, setManageMenuOpen] = useState(false);
-  
+
   // Flyout menu anchor states for collapsed sidebar
   const [listingAnchorEl, setListingAnchorEl] = useState(null);
   const [monitoringAnchorEl, setMonitoringAnchorEl] = useState(null);
   const [compatAnchorEl, setCompatAnchorEl] = useState(null);
   const [ordersAnchorEl, setOrdersAnchorEl] = useState(null);
   const [manageAnchorEl, setManageAnchorEl] = useState(null);
-  
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -180,7 +181,7 @@ export default function AdminLayout({ user, onLogout }) {
   // New Roles
   const isHOC = user?.role === 'hoc';
   const isComplianceManager = user?.role === 'compliancemanager';
-  
+
   // Lister Roles
   const isLister = user?.role === 'lister';
   const isAdvanceLister = user?.role === 'advancelister';
@@ -205,9 +206,9 @@ export default function AdminLayout({ user, onLogout }) {
         {/* Back to Lister Dashboard - visible only to listers */}
         {isAnyLister && (
           <ListItem disablePadding>
-            <ListItemButton 
-              component={Link} 
-              to="/lister" 
+            <ListItemButton
+              component={Link}
+              to="/lister"
               onClick={() => setMobileOpen(false)}
               sx={selectedMenuItemStyle}
             >
@@ -224,9 +225,9 @@ export default function AdminLayout({ user, onLogout }) {
 
         {/* Ideas & Issues - visible to ALL users */}
         <ListItem disablePadding>
-          <ListItemButton 
-            component={Link} 
-            to="/admin/ideas" 
+          <ListItemButton
+            component={Link}
+            to="/admin/ideas"
             onClick={() => setMobileOpen(false)}
             selected={location.pathname === '/admin/ideas'}
             sx={selectedMenuItemStyle}
@@ -241,9 +242,9 @@ export default function AdminLayout({ user, onLogout }) {
         {/* About Me - visible to all users except superadmin */}
         {!isSuper && (
           <ListItem disablePadding>
-            <ListItemButton 
-              component={Link} 
-              to="/admin/about-me" 
+            <ListItemButton
+              component={Link}
+              to="/admin/about-me"
               onClick={() => setMobileOpen(false)}
               selected={location.pathname === '/admin/about-me'}
               sx={selectedMenuItemStyle}
@@ -258,9 +259,9 @@ export default function AdminLayout({ user, onLogout }) {
 
         {/* Internal Messages - visible to ALL users */}
         <ListItem disablePadding>
-          <ListItemButton 
-            component={Link} 
-            to="/admin/internal-messages" 
+          <ListItemButton
+            component={Link}
+            to="/admin/internal-messages"
             onClick={() => setMobileOpen(false)}
             selected={location.pathname === '/admin/internal-messages'}
             sx={selectedMenuItemStyle}
@@ -276,9 +277,9 @@ export default function AdminLayout({ user, onLogout }) {
         {isSuper && (
           <>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/payoneer" 
+              <ListItemButton
+                component={Link}
+                to="/admin/payoneer"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/payoneer'}
                 sx={selectedMenuItemStyle}
@@ -290,9 +291,9 @@ export default function AdminLayout({ user, onLogout }) {
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/bank-accounts" 
+              <ListItemButton
+                component={Link}
+                to="/admin/bank-accounts"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/bank-accounts'}
                 sx={selectedMenuItemStyle}
@@ -304,9 +305,9 @@ export default function AdminLayout({ user, onLogout }) {
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/transactions" 
+              <ListItemButton
+                component={Link}
+                to="/admin/transactions"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/transactions'}
                 sx={selectedMenuItemStyle}
@@ -318,9 +319,9 @@ export default function AdminLayout({ user, onLogout }) {
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/credit-card-names" 
+              <ListItemButton
+                component={Link}
+                to="/admin/credit-card-names"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/credit-card-names'}
                 sx={selectedMenuItemStyle}
@@ -332,9 +333,9 @@ export default function AdminLayout({ user, onLogout }) {
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/internal-messages-admin" 
+              <ListItemButton
+                component={Link}
+                to="/admin/internal-messages-admin"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/internal-messages-admin'}
                 sx={selectedMenuItemStyle}
@@ -352,9 +353,9 @@ export default function AdminLayout({ user, onLogout }) {
         {isProductAdmin || isSuper ? (
           <>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/research" 
+              <ListItemButton
+                component={Link}
+                to="/admin/research"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/research'}
                 sx={selectedMenuItemStyle}
@@ -368,9 +369,9 @@ export default function AdminLayout({ user, onLogout }) {
 
             {/* Amazon Lookup */}
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/amazon-lookup" 
+              <ListItemButton
+                component={Link}
+                to="/admin/amazon-lookup"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/amazon-lookup'}
                 sx={selectedMenuItemStyle}
@@ -385,9 +386,9 @@ export default function AdminLayout({ user, onLogout }) {
             {/* Listing Templates - Create/Edit Templates (Superadmin only) */}
             {isSuper && (
               <ListItem disablePadding>
-                <ListItemButton 
-                  component={Link} 
-                  to="/admin/manage-templates" 
+                <ListItemButton
+                  component={Link}
+                  to="/admin/manage-templates"
                   onClick={() => setMobileOpen(false)}
                   selected={location.pathname === '/admin/manage-templates'}
                   sx={selectedMenuItemStyle}
@@ -403,9 +404,9 @@ export default function AdminLayout({ user, onLogout }) {
             {/* Template Listings Database (Superadmin only) */}
             {isSuper && (
               <ListItem disablePadding>
-                <ListItemButton 
-                  component={Link} 
-                  to="/admin/listings-database" 
+                <ListItemButton
+                  component={Link}
+                  to="/admin/listings-database"
                   onClick={() => setMobileOpen(false)}
                   selected={location.pathname === '/admin/listings-database'}
                   sx={selectedMenuItemStyle}
@@ -423,9 +424,9 @@ export default function AdminLayout({ user, onLogout }) {
         {/* Template Listings - Seller-based listing workflow (Superadmin + Listers) */}
         {(isSuper || isAnyLister) && (
           <ListItem disablePadding>
-            <ListItemButton 
-              component={Link} 
-              to="/admin/select-seller" 
+            <ListItemButton
+              component={Link}
+              to="/admin/select-seller"
               onClick={() => setMobileOpen(false)}
               selected={location.pathname.startsWith('/admin/select-seller') || location.pathname.startsWith('/admin/seller-templates') || location.pathname.startsWith('/admin/template-listings')}
               sx={selectedMenuItemStyle}
@@ -444,9 +445,9 @@ export default function AdminLayout({ user, onLogout }) {
 
             {/* Product Umbrellas */}
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/product-umbrellas" 
+              <ListItemButton
+                component={Link}
+                to="/admin/product-umbrellas"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/product-umbrellas'}
                 sx={selectedMenuItemStyle}
@@ -460,9 +461,9 @@ export default function AdminLayout({ user, onLogout }) {
 
             {/* ASIN Storage */}
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/asin-storage" 
+              <ListItemButton
+                component={Link}
+                to="/admin/asin-storage"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/asin-storage'}
                 sx={selectedMenuItemStyle}
@@ -476,9 +477,9 @@ export default function AdminLayout({ user, onLogout }) {
 
             {/* Column Creator */}
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/column-creator" 
+              <ListItemButton
+                component={Link}
+                to="/admin/column-creator"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/column-creator'}
                 sx={selectedMenuItemStyle}
@@ -496,7 +497,7 @@ export default function AdminLayout({ user, onLogout }) {
         {(isListingAdmin || isSuper) && (
           <>
             <ListItem disablePadding>
-              <ListItemButton 
+              <ListItemButton
                 onClick={() => sidebarOpen && setListingMenuOpen((open) => !open)}
                 onMouseEnter={(e) => !sidebarOpen && setListingAnchorEl(e.currentTarget)}
                 onMouseLeave={() => !sidebarOpen && setListingAnchorEl(null)}
@@ -509,14 +510,14 @@ export default function AdminLayout({ user, onLogout }) {
                 {sidebarOpen && (listingMenuOpen ? <ExpandLess /> : <ExpandMore />)}
               </ListItemButton>
             </ListItem>
-            
+
             {/* Expanded sidebar: Collapse component */}
             {sidebarOpen && (
               <Collapse in={listingMenuOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding sx={{ pl: 4 }}>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/listing" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/listing"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/listing'}
                     sx={selectedMenuItemStyle}
@@ -530,27 +531,27 @@ export default function AdminLayout({ user, onLogout }) {
                   </ListItemButton>
                   <Collapse in={monitoringMenuOpen} timeout="auto" unmountOnExit>
                     <List component="div" disablePadding sx={{ pl: 4 }}>
-                      <ListItemButton 
-                        component={Link} 
-                        to="/admin/task-list" 
+                      <ListItemButton
+                        component={Link}
+                        to="/admin/task-list"
                         onClick={() => setMobileOpen(false)}
                         selected={location.pathname === '/admin/task-list'}
                         sx={selectedMenuItemStyle}
                       >
                         <ListItemText primary="Task List" />
                       </ListItemButton>
-                      <ListItemButton 
-                        component={Link} 
-                        to="/admin/assignments" 
+                      <ListItemButton
+                        component={Link}
+                        to="/admin/assignments"
                         onClick={() => setMobileOpen(false)}
                         selected={location.pathname === '/admin/assignments'}
                         sx={selectedMenuItemStyle}
                       >
                         <ListItemText primary="Assignments" />
                       </ListItemButton>
-                      <ListItemButton 
-                        component={Link} 
-                        to="/admin/listings-summary" 
+                      <ListItemButton
+                        component={Link}
+                        to="/admin/listings-summary"
                         onClick={() => setMobileOpen(false)}
                         selected={location.pathname === '/admin/listings-summary'}
                         sx={selectedMenuItemStyle}
@@ -558,45 +559,45 @@ export default function AdminLayout({ user, onLogout }) {
                         <ListItemText primary="Listings Summary" />
                       </ListItemButton>
 
-                      <ListItemButton 
-                        component={Link} 
-                        to="/admin/listing-sheet" 
+                      <ListItemButton
+                        component={Link}
+                        to="/admin/listing-sheet"
                         onClick={() => setMobileOpen(false)}
                         selected={location.pathname === '/admin/listing-sheet'}
                         sx={selectedMenuItemStyle}
                       >
                         <ListItemText primary="Listing Sheet" />
                       </ListItemButton>
-                      <ListItemButton 
-                        component={Link} 
-                        to="/admin/store-wise-tasks" 
+                      <ListItemButton
+                        component={Link}
+                        to="/admin/store-wise-tasks"
                         onClick={() => setMobileOpen(false)}
                         selected={location.pathname === '/admin/store-wise-tasks'}
                         sx={selectedMenuItemStyle}
                       >
                         <ListItemText primary="Store-Wise Tasks" />
                       </ListItemButton>
-                      <ListItemButton 
-                        component={Link} 
-                        to="/admin/store-daily-tasks" 
+                      <ListItemButton
+                        component={Link}
+                        to="/admin/store-daily-tasks"
                         onClick={() => setMobileOpen(false)}
                         selected={location.pathname === '/admin/store-daily-tasks'}
                         sx={selectedMenuItemStyle}
                       >
                         <ListItemText primary="Store Daily Tasks" />
                       </ListItemButton>
-                      <ListItemButton 
-                        component={Link} 
-                        to="/admin/lister-info" 
+                      <ListItemButton
+                        component={Link}
+                        to="/admin/lister-info"
                         onClick={() => setMobileOpen(false)}
                         selected={location.pathname === '/admin/lister-info'}
                         sx={selectedMenuItemStyle}
                       >
                         <ListItemText primary="Lister Info" />
                       </ListItemButton>
-                      <ListItemButton 
-                        component={Link} 
-                        to="/admin/range-analyzer" 
+                      <ListItemButton
+                        component={Link}
+                        to="/admin/range-analyzer"
                         onClick={() => setMobileOpen(false)}
                         selected={location.pathname === '/admin/range-analyzer'}
                         sx={selectedMenuItemStyle}
@@ -609,7 +610,7 @@ export default function AdminLayout({ user, onLogout }) {
                 </List>
               </Collapse>
             )}
-            
+
             {/* Collapsed sidebar: Flyout menu */}
             <Menu
               anchorEl={listingAnchorEl}
@@ -634,7 +635,7 @@ export default function AdminLayout({ user, onLogout }) {
               <MenuItem component={Link} to="/admin/listing" onClick={() => { setListingAnchorEl(null); setMonitoringAnchorEl(null); }}>
                 Product Table
               </MenuItem>
-              <MenuItem 
+              <MenuItem
                 onMouseEnter={(e) => setMonitoringAnchorEl(e.currentTarget)}
                 onMouseLeave={() => setMonitoringAnchorEl(null)}
                 sx={{ display: 'flex', justifyContent: 'space-between' }}
@@ -642,7 +643,7 @@ export default function AdminLayout({ user, onLogout }) {
                 Monitoring <ExpandMore sx={{ transform: 'rotate(-90deg)', ml: 1 }} />
               </MenuItem>
             </Menu>
-            
+
             {/* Nested Monitoring flyout menu */}
             <Menu
               anchorEl={monitoringAnchorEl}
@@ -688,7 +689,7 @@ export default function AdminLayout({ user, onLogout }) {
         {isSuper && (
           <>
             <ListItem disablePadding>
-              <ListItemButton 
+              <ListItemButton
                 onClick={() => sidebarOpen && setCompatMenuOpen((open) => !open)}
                 onMouseEnter={(e) => !sidebarOpen && setCompatAnchorEl(e.currentTarget)}
                 onMouseLeave={() => !sidebarOpen && setCompatAnchorEl(null)}
@@ -701,23 +702,23 @@ export default function AdminLayout({ user, onLogout }) {
                 {sidebarOpen && (compatMenuOpen ? <ExpandLess /> : <ExpandMore />)}
               </ListItemButton>
             </ListItem>
-            
+
             {/* Expanded sidebar: Collapse component */}
             {sidebarOpen && (
               <Collapse in={compatMenuOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding sx={{ pl: 4 }}>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/compatibility-tasks" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/compatibility-tasks"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/compatibility-tasks'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Compatibility Tasks" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/compatibility-progress" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/compatibility-progress"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/compatibility-progress'}
                     sx={selectedMenuItemStyle}
@@ -727,7 +728,7 @@ export default function AdminLayout({ user, onLogout }) {
                 </List>
               </Collapse>
             )}
-            
+
             {/* Collapsed sidebar: Flyout menu */}
             <Menu
               anchorEl={compatAnchorEl}
@@ -753,9 +754,9 @@ export default function AdminLayout({ user, onLogout }) {
 
         {(isSuper || isCompatibilityAdmin || isCompatibilityEditor) && (
           <ListItem disablePadding>
-            <ListItemButton 
-              component={Link} 
-              to="/admin/compatibility-dashboard" 
+            <ListItemButton
+              component={Link}
+              to="/admin/compatibility-dashboard"
               onClick={() => setMobileOpen(false)}
               selected={location.pathname === '/admin/compatibility-dashboard'}
               sx={selectedMenuItemStyle}
@@ -772,7 +773,7 @@ export default function AdminLayout({ user, onLogout }) {
         {(isSuper || isFulfillmentAdmin || isHOC || isComplianceManager) && (
           <>
             <ListItem disablePadding>
-              <ListItemButton 
+              <ListItemButton
                 onClick={() => sidebarOpen && setOrdersMenuOpen((open) => !open)}
                 onMouseEnter={(e) => !sidebarOpen && setOrdersAnchorEl(e.currentTarget)}
                 onMouseLeave={() => !sidebarOpen && setOrdersAnchorEl(null)}
@@ -785,77 +786,77 @@ export default function AdminLayout({ user, onLogout }) {
                 {sidebarOpen && (ordersMenuOpen ? <ExpandLess /> : <ExpandMore />)}
               </ListItemButton>
             </ListItem>
-            
+
             {/* Expanded sidebar: Collapse component */}
             {sidebarOpen && (
               <Collapse in={ordersMenuOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding sx={{ pl: 4 }}>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/order-analytics" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/order-analytics"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/order-analytics'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Order Analytics" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/seller-analytics" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/seller-analytics"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/seller-analytics'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Seller Analytics" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/fulfillment" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/fulfillment"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/fulfillment'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="All Orders" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/all-orders-sheet" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/all-orders-sheet"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/all-orders-sheet'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="All Orders Sheet (USD)" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/awaiting-shipment" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/awaiting-shipment"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/awaiting-shipment'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Awaiting Shipment" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/amazon-arrivals" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/amazon-arrivals"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/amazon-arrivals'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Amazon Arrivals" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/fulfillment-notes" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/fulfillment-notes"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/fulfillment-notes'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Fulfillment Notes" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/disputes" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/disputes"
                     onClick={() => setMobileOpen(false)}
                     selected={
                       location.pathname === '/admin/disputes' ||
@@ -867,45 +868,45 @@ export default function AdminLayout({ user, onLogout }) {
                   >
                     <ListItemText primary="Issues and Resolutions" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/account-health" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/account-health"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/account-health'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Account Health Report" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/message-received" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/message-received"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/message-received'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Buyer Messages" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/conversation-management" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/conversation-management"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/conversation-management'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Conversation Mgmt" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/amazon-accounts" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/amazon-accounts"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/amazon-accounts'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Manage Amazon Accts" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/credit-cards" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/credit-cards"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/credit-cards'}
                     sx={selectedMenuItemStyle}
@@ -915,7 +916,7 @@ export default function AdminLayout({ user, onLogout }) {
                 </List>
               </Collapse>
             )}
-            
+
             {/* Collapsed sidebar: Flyout menu */}
             <Menu
               anchorEl={ordersAnchorEl}
@@ -973,7 +974,7 @@ export default function AdminLayout({ user, onLogout }) {
         {isSuper && (
           <>
             <ListItem disablePadding>
-              <ListItemButton 
+              <ListItemButton
                 onClick={() => sidebarOpen && setManageMenuOpen((open) => !open)}
                 onMouseEnter={(e) => !sidebarOpen && setManageAnchorEl(e.currentTarget)}
                 onMouseLeave={() => !sidebarOpen && setManageAnchorEl(null)}
@@ -984,32 +985,32 @@ export default function AdminLayout({ user, onLogout }) {
                 {sidebarOpen && (manageMenuOpen ? <ExpandLess /> : <ExpandMore />)}
               </ListItemButton>
             </ListItem>
-            
+
             {/* Expanded sidebar: Collapse component */}
             {sidebarOpen && (
               <Collapse in={manageMenuOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding sx={{ pl: 4 }}>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/categories" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/categories"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/categories'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Manage Categories" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/platforms" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/platforms"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/platforms'}
                     sx={selectedMenuItemStyle}
                   >
                     <ListItemText primary="Manage Platforms" />
                   </ListItemButton>
-                  <ListItemButton 
-                    component={Link} 
-                    to="/admin/stores" 
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/stores"
                     onClick={() => setMobileOpen(false)}
                     selected={location.pathname === '/admin/stores'}
                     sx={selectedMenuItemStyle}
@@ -1019,7 +1020,7 @@ export default function AdminLayout({ user, onLogout }) {
                 </List>
               </Collapse>
             )}
-            
+
             {/* Collapsed sidebar: Flyout menu */}
             <Menu
               anchorEl={manageAnchorEl}
@@ -1049,9 +1050,9 @@ export default function AdminLayout({ user, onLogout }) {
         {isProductAdmin ? (
           <>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/categories" 
+              <ListItemButton
+                component={Link}
+                to="/admin/categories"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/categories'}
                 sx={selectedMenuItemStyle}
@@ -1065,9 +1066,9 @@ export default function AdminLayout({ user, onLogout }) {
 
         {isSuper || isListingAdmin || isHRAdmin || isOperationHead ? (
           <ListItem disablePadding>
-            <ListItemButton 
-              component={Link} 
-              to="/admin/add-user" 
+            <ListItemButton
+              component={Link}
+              to="/admin/add-user"
               onClick={() => setMobileOpen(false)}
               selected={location.pathname === '/admin/add-user'}
               sx={selectedMenuItemStyle}
@@ -1081,9 +1082,9 @@ export default function AdminLayout({ user, onLogout }) {
         {(isCompatibilityAdmin) && (
           <>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/add-compatibility-editor" 
+              <ListItemButton
+                component={Link}
+                to="/admin/add-compatibility-editor"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/add-compatibility-editor'}
                 sx={selectedMenuItemStyle}
@@ -1093,9 +1094,9 @@ export default function AdminLayout({ user, onLogout }) {
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/compatibility-tasks" 
+              <ListItemButton
+                component={Link}
+                to="/admin/compatibility-tasks"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/compatibility-tasks'}
                 sx={selectedMenuItemStyle}
@@ -1105,9 +1106,9 @@ export default function AdminLayout({ user, onLogout }) {
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/compatibility-progress" 
+              <ListItemButton
+                component={Link}
+                to="/admin/compatibility-progress"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/compatibility-progress'}
                 sx={selectedMenuItemStyle}
@@ -1121,9 +1122,9 @@ export default function AdminLayout({ user, onLogout }) {
 
         {(isCompatibilityEditor) && (
           <ListItem disablePadding>
-            <ListItemButton 
-              component={Link} 
-              to="/admin/compatibility-editor" 
+            <ListItemButton
+              component={Link}
+              to="/admin/compatibility-editor"
               onClick={() => setMobileOpen(false)}
               selected={location.pathname === '/admin/compatibility-editor'}
               sx={selectedMenuItemStyle}
@@ -1135,19 +1136,38 @@ export default function AdminLayout({ user, onLogout }) {
         )}
 
 
+        {/* Employee Management - visible to superadmin and hradmin only */}
+        {(isSuper || isHRAdmin) && (
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              to="/admin/employee-management"
+              onClick={() => setMobileOpen(false)}
+              selected={location.pathname === '/admin/employee-management'}
+              sx={selectedMenuItemStyle}
+            >
+              <ListItemIcon>
+                <NavIcon icon={AdminPanelSettingsIcon} label="Employee Management" sidebarOpen={sidebarOpen} />
+              </ListItemIcon>
+              {sidebarOpen && <ListItemText primary="Employee Management" />}
+            </ListItemButton>
+          </ListItem>
+        )}
 
         {(isSuper || isHRAdmin || isOperationHead) && (
           <>
             <ListItem disablePadding>
-              <ListItemButton 
-                component={Link} 
-                to="/admin/employee-details" 
+              <ListItemButton
+                component={Link}
+                to="/admin/employee-details"
                 onClick={() => setMobileOpen(false)}
                 selected={location.pathname === '/admin/employee-details'}
                 sx={selectedMenuItemStyle}
               >
-                <ListItemIcon><SupervisorAccountIcon /></ListItemIcon>
-                {sidebarOpen && <ListItemText primary="Employee Details" />}
+                <ListItemIcon>
+                  <NavIcon icon={SupervisorAccountIcon} label="[Testing] Employee Details" sidebarOpen={sidebarOpen} />
+                </ListItemIcon>
+                {sidebarOpen && <ListItemText primary="[Testing] Employee Details" />}
               </ListItemButton>
             </ListItem>
           </>
@@ -1181,10 +1201,10 @@ export default function AdminLayout({ user, onLogout }) {
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
-          sx={{ 
-            display: { xs: 'block', sm: 'none' }, 
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
               width: drawerWidth,
               '&::-webkit-scrollbar': {
                 width: '6px',
@@ -1199,18 +1219,18 @@ export default function AdminLayout({ user, onLogout }) {
                   background: 'rgba(0, 0, 0, 0.3)',
                 },
               },
-            } 
+            }
           }}
         >
           {drawer}
         </Drawer>
         <Drawer
           variant="permanent"
-          sx={{ 
-            display: { xs: 'none', sm: 'block' }, 
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
-              width: sidebarOpen ? drawerWidth : 56, 
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: sidebarOpen ? drawerWidth : 56,
               transition: 'width 0.2s',
               '&::-webkit-scrollbar': {
                 width: '6px',
@@ -1225,7 +1245,7 @@ export default function AdminLayout({ user, onLogout }) {
                   background: 'rgba(0, 0, 0, 0.3)',
                 },
               },
-            } 
+            }
           }}
           open
         >
@@ -1296,6 +1316,9 @@ export default function AdminLayout({ user, onLogout }) {
           )}
           {(isSuper || isHRAdmin || isOperationHead) && (
             <Route path="/employee-details" element={<EmployeeDetailsPage />} />
+          )}
+          {(isSuper || isHRAdmin) && (
+            <Route path="/employee-management" element={<EmployeeManagementPage />} />
           )}
           {isCompatibilityAdmin && (
             <>
