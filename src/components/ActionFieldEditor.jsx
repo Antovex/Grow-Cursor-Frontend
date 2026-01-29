@@ -31,7 +31,10 @@ export default function ActionFieldEditor({ templateId, sellerId }) {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get(`/listing-templates/action-field/${templateId}`);
+      const url = sellerId 
+        ? `/listing-templates/action-field/${templateId}?sellerId=${sellerId}`
+        : `/listing-templates/action-field/${templateId}`;
+      const response = await api.get(url);
       setActionField(response.data.actionField);
     } catch (err) {
       setError('Failed to load Action field');
