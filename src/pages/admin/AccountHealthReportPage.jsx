@@ -23,6 +23,7 @@ import {
   IconButton,
   Tooltip,
   Snackbar,
+  Chip,
 } from '@mui/material';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -285,6 +286,86 @@ export default function AccountHealthReportPage() {
     if (rateNum > marketAvg) return 'warning.main';
     return 'success.main';
   };
+
+  // Compute Store Status for each evaluation window
+  // Logic: Per-seller tracking. Status escalates when BBE rate increases while above market avg,
+  // and de-escalates when BBE rate decreases (but never below Non-Compliant while above market avg).
+  // Levels: Compliant (green) → Non-Compliant (yellow) → Warning (orange) → Action Taken (red)
+  const STATUS_LEVELS = ['Compliant', 'Non-Compliant', 'Warning', 'Action Taken'];
+  const STATUS_COLORS = {
+    'Compliant': '#4caf50',      // Green
+    'Non-Compliant': '#ffeb3b',  // Yellow
+    'Warning': '#ff9800',        // Orange
+    'Action Taken': '#f44336'    // Red
+  };
+
+  const windowsWithStatus = useMemo(() => {
+    if (!windows || windows.length === 0) return [];
+    
+    // Group windows by seller
+    const sellerWindowsMap = {};
+    for (const w of windows) {
+      const sellerId = w.sellerId || w.seller?._id || 'unknown';
+      if (!sellerWindowsMap[sellerId]) {
+        sellerWindowsMap[sellerId] = [];
+      }
+      sellerWindowsMap[sellerId].push(w);
+    }
+    
+    const result = [];
+    
+    // Process each seller's windows independently
+    for (const sellerId of Object.keys(sellerWindowsMap)) {
+      const sellerWindows = sellerWindowsMap[sellerId];
+      
+      // Sort oldest first for chronological processing
+      const sortedWindows = [...sellerWindows].sort((a, b) => 
+        new Date(a.evaluationWindowEnd || a.windowEnd) - new Date(b.evaluationWindowEnd || b.windowEnd)
+      );
+      
+      let currentStatusLevel = 0; // 0 = Compliant
+      let prevBbeRate = null;
+      
+      for (const w of sortedWindows) {
+        const bbeRate = parseFloat(w.bbeRate);
+        const marketAvg = parseFloat(w.marketAvg);
+        const isAbove = bbeRate > marketAvg;
+        
+        if (!isAbove) {
+          // Below market avg → Compliant
+          currentStatusLevel = 0;
+        } else {
+          // Above market avg
+          if (currentStatusLevel === 0) {
+            // First time going above → Non-Compliant
+            currentStatusLevel = 1;
+          } else if (prevBbeRate !== null) {
+            // Compare with previous week
+            if (bbeRate > prevBbeRate) {
+              // BBE increased → escalate (max level 3)
+              currentStatusLevel = Math.min(currentStatusLevel + 1, 3);
+            } else if (bbeRate < prevBbeRate) {
+              // BBE decreased → de-escalate (min level 1 while above market avg)
+              currentStatusLevel = Math.max(currentStatusLevel - 1, 1);
+            }
+            // If equal, stay at same level
+          }
+        }
+        
+        prevBbeRate = bbeRate;
+        
+        const status = STATUS_LEVELS[currentStatusLevel];
+        const statusColor = STATUS_COLORS[status];
+        
+        result.push({ ...w, storeStatus: status, storeStatusColor: statusColor });
+      }
+    }
+    
+    // Sort back to newest first for display
+    return result.sort((a, b) => 
+      new Date(b.evaluationWindowEnd || b.windowEnd) - new Date(a.evaluationWindowEnd || a.windowEnd)
+    );
+  }, [windows]);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -652,21 +733,22 @@ export default function AccountHealthReportPage() {
                   <TableCell><strong>Total Sales</strong></TableCell>
                   <TableCell><strong>BBE Rate (%)</strong></TableCell>
                   <TableCell><strong>Market Avg</strong></TableCell>
+                  <TableCell><strong>Store Status</strong></TableCell>
                   <TableCell><strong>Evaluation Date</strong></TableCell>
                   <TableCell><strong>Total SNAD Count</strong></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {windows.length === 0 ? (
+                {windowsWithStatus.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
+                    <TableCell colSpan={7} align="center">
                       <Typography variant="body2" color="text.secondary" py={2}>
                         No evaluation windows found.
                       </Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  windows.map((w, idx) => (
+                  windowsWithStatus.map((w, idx) => (
                     <TableRow key={idx} hover>
                       <TableCell>
                         <Typography variant="body2">
@@ -716,6 +798,17 @@ export default function AccountHealthReportPage() {
                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>(edit)</Typography>
                           </Stack>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={w.storeStatus}
+                          size="small"
+                          sx={{ 
+                            fontWeight: 'bold',
+                            bgcolor: w.storeStatusColor,
+                            color: w.storeStatus === 'Non-Compliant' ? '#000' : '#fff'
+                          }}
+                        />
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">{formatDate(w.evaluationDate)}</Typography>
