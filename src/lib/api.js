@@ -70,6 +70,11 @@ export async function deleteEmployeeProfile(profileId) {
   return data;
 }
 
+export async function toggleEmployeeHidden(profileId) {
+  const { data } = await api.patch(`/employee-profiles/${profileId}/toggle-hidden`);
+  return data;
+}
+
 // File Upload APIs
 export async function uploadEmployeeFile(fileType, file) {
   const formData = new FormData();
