@@ -423,17 +423,27 @@ export default function AsinReviewModal({
                 {/* Pricing Calculation Info */}
                 {currentItem.pricingCalculation?.enabled && (
                   <Alert severity="info" sx={{ mt: 2 }}>
-                    <Typography variant="caption" display="block">
-                      Amazon Price: {currentItem.pricingCalculation.amazonCost}
+                    <Typography variant="caption" fontWeight="bold" display="block" gutterBottom>
+                      Pricing Breakdown
                     </Typography>
                     <Typography variant="caption" display="block">
-                      Calculated Start Price: ${currentItem.pricingCalculation.calculatedStartPrice}
+                      Amazon Cost: {currentItem.pricingCalculation.amazonCost}
                     </Typography>
-                    {currentItem.pricingCalculation.breakdown?.profitTier && (
+                    {currentItem.pricingCalculation.breakdown?.profitTier?.enabled ? (
+                      <Typography variant="caption" display="block" sx={{ color: 'success.main', fontWeight: 600 }}>
+                        Profit (Tier): {currentItem.pricingCalculation.breakdown.profitTier.profit} INR
+                        {currentItem.pricingCalculation.breakdown.profitTier.costRange && 
+                          ` (${currentItem.pricingCalculation.breakdown.profitTier.costRange})`
+                        }
+                      </Typography>
+                    ) : (
                       <Typography variant="caption" display="block">
-                        Profit Tier: {currentItem.pricingCalculation.breakdown.profitTier.costRange} (+{currentItem.pricingCalculation.breakdown.profitTier.profit} INR)
+                        Profit: {currentItem.pricingCalculation.breakdown?.desiredProfit || currentItem.pricingCalculation.breakdown?.applicableProfit} INR
                       </Typography>
                     )}
+                    <Typography variant="caption" display="block" sx={{ fontWeight: 600, mt: 0.5 }}>
+                      Calculated Start Price: ${currentItem.pricingCalculation.calculatedStartPrice}
+                    </Typography>
                   </Alert>
                 )}
               </Stack>
