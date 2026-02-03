@@ -604,9 +604,19 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
             <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
               {selectedItem?.title}
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              ID: {selectedItem?.itemId}
-            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Typography variant="body2" color="textSecondary">
+                ID: {selectedItem?.itemId}
+              </Typography>
+              {selectedItem?.sku && (
+                <Chip 
+                  label={`SKU: ${selectedItem.sku}`} 
+                  size="small" 
+                  variant="outlined" 
+                  sx={{ fontSize: '0.75rem' }} 
+                />
+              )}
+            </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Typography variant="caption" sx={{ mr: 1 }}>
@@ -633,6 +643,22 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
         <DialogContent sx={{ p: 0, display: 'flex', height: '75vh' }}>
           
           <Box sx={{ flex: 1, borderRight: '1px solid #eee', p: 2, overflowY: 'auto', bgcolor: '#fafafa' }}>
+            {/* Product Image */}
+            {selectedItem?.mainImageUrl && (
+              <Box sx={{ mb: 2, textAlign: 'center' }}>
+                <img 
+                  src={selectedItem.mainImageUrl} 
+                  alt={selectedItem?.title || 'Product'} 
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: 200, 
+                    objectFit: 'contain', 
+                    borderRadius: 8,
+                    border: '1px solid #ddd'
+                  }} 
+                />
+              </Box>
+            )}
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Item Description Preview</Typography>
             {selectedItem?.descriptionPreview ? (
                 <div style={{ padding: 15, backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: 4 }} dangerouslySetInnerHTML={{ __html: selectedItem.descriptionPreview }} />
@@ -666,74 +692,53 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
                     renderInput={(params) => <TextField {...params} label="Model" size="small" />}
                 />
               </Grid>
-              {/* YEAR */}
+              {/* YEAR - Searchable Autocomplete with multi-select */}
               <Grid item xs={3}>
-                <FormControl size="small" fullWidth disabled={!selectedModel}>
-                    <InputLabel>Years</InputLabel>
-                    <Select
-                        multiple
-                        value={selectedYears}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          const valuesArray = Array.isArray(value)
-                            ? value
-                            : (typeof value === 'string' ? value.split(',') : []);
-                          if (valuesArray.includes('SELECT_ALL')) {
-                            // Toggle select all
-                            setSelectedYears(
-                              selectedYears.length === yearOptions.length ? [] : [...yearOptions]
-                            );
-                          } else {
-                            // Regular selection
-                            setSelectedYears(valuesArray);
-                          }
-                        }}
-                        input={<OutlinedInput label="Years" />}
-                        renderValue={(selected) => {
-                          if (selected.length === 0) return '';
-                          if (selected.length === 1) return selected[0];
-                          if (selected.length <= 3) return selected.join(', ');
-                          return `${selected.length} years selected`;
-                        }}
-                        MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
-                    >
-                        {loadingYears ? <MenuItem disabled>Loading...</MenuItem> : (
-                          <>
-                            <MenuItem
-                              value="SELECT_ALL"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                toggleSelectAllYears();
-                              }}
-                            >
-                              <Checkbox 
-                                checked={yearOptions.length > 0 && selectedYears.length === yearOptions.length}
-                                indeterminate={selectedYears.length > 0 && selectedYears.length < yearOptions.length}
-                                size="small" 
-                              />
-                              <ListItemText primary="Select All" sx={{ fontWeight: 'bold' }} />
-                            </MenuItem>
-                            <Divider />
-                             {yearOptions.map((year) => (
-                               <MenuItem
-                                 key={year}
-                                 value={year}
-                                 onClick={(e) => {
-                                   // Prevent default Select onChange from conflicting
-                                   e.preventDefault();
-                                   e.stopPropagation();
-                                   toggleYear(year);
-                                 }}
-                               >
-                                 <Checkbox checked={selectedYears.includes(year)} size="small" />
-                                 <ListItemText primary={year} />
-                               </MenuItem>
-                             ))}
-                          </>
-                        )}
-                    </Select>
-                </FormControl>
+                <Autocomplete
+                  multiple
+                  options={yearOptions}
+                  value={selectedYears}
+                  onChange={(e, newValue) => setSelectedYears(newValue)}
+                  loading={loadingYears}
+                  disabled={!selectedModel}
+                  disableCloseOnSelect
+                  getOptionLabel={(option) => String(option)}
+                  renderOption={(props, option, { selected }) => (
+                    <li {...props}>
+                      <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
+                      {option}
+                    </li>
+                  )}
+                  renderInput={(params) => (
+                    <TextField 
+                      {...params} 
+                      label="Years" 
+                      size="small" 
+                      placeholder="Type to search..."
+                    />
+                  )}
+                  renderTags={(value, getTagProps) => {
+                    if (value.length === 0) return null;
+                    if (value.length <= 2) {
+                      return value.map((option, index) => (
+                        <Chip {...getTagProps({ index })} key={option} label={option} size="small" />
+                      ));
+                    }
+                    return <Chip label={`${value.length} years`} size="small" />;
+                  }}
+                  ListboxProps={{ style: { maxHeight: 300 } }}
+                  sx={{ minWidth: 150 }}
+                />
+                {/* Select All Button */}
+                {selectedModel && yearOptions.length > 0 && (
+                  <Button 
+                    size="small" 
+                    onClick={toggleSelectAllYears}
+                    sx={{ mt: 0.5, fontSize: '0.7rem', p: 0.5, minWidth: 'auto' }}
+                  >
+                    {selectedYears.length === yearOptions.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                )}
               </Grid>
               <Grid item xs={2}><TextField label="Notes" size="small" value={newNotes} onChange={e => setNewNotes(e.target.value)} fullWidth/></Grid>
               <Grid item xs={1}><Button variant="contained" onClick={handleAddVehicle} sx={{height: 40}}><AddIcon /></Button></Grid>
