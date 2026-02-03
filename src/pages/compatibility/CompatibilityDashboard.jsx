@@ -98,6 +98,8 @@ export default function CompatibilityDashboard() {
   const [selectedMake, setSelectedMake] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedYears, setSelectedYears] = useState([]);
+  const [startYear, setStartYear] = useState('');
+  const [endYear, setEndYear] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [pageInputValue, setPageInputValue] = useState('');
 
@@ -137,6 +139,8 @@ export default function CompatibilityDashboard() {
         setSelectedMake(null);
         setSelectedModel(null);
         setSelectedYears([]);
+        setStartYear('');
+        setEndYear('');
         setNewNotes('');
       } else if (pendingNavigation === 'last') {
         const lastItem = listings[listings.length - 1];
@@ -146,6 +150,8 @@ export default function CompatibilityDashboard() {
         setSelectedMake(null);
         setSelectedModel(null);
         setSelectedYears([]);
+        setStartYear('');
+        setEndYear('');
         setNewNotes('');
       }
       setPendingNavigation(null);
@@ -266,6 +272,8 @@ export default function CompatibilityDashboard() {
     setSelectedMake(null);
     setSelectedModel(null);
     setSelectedYears([]);
+    setStartYear('');
+    setEndYear('');
     setNewNotes('');
     fetchMakes();
   };
@@ -281,7 +289,9 @@ export default function CompatibilityDashboard() {
       ]
     }));
     setEditCompatList([...newEntries, ...editCompatList]);
-    setSelectedYears([]); 
+    setSelectedYears([]);
+    setStartYear('');
+    setEndYear('');
     setNewNotes('');
   };
 
@@ -372,6 +382,37 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
     ));
   };
 
+  // Handle year range selection
+  const handleYearRangeChange = (start, end) => {
+    if (!start && !end) {
+      setSelectedYears([]);
+      return;
+    }
+    
+    if (start && !end) {
+      // Only start year selected
+      setSelectedYears([start]);
+      return;
+    }
+    
+    if (start && end) {
+      // Both selected - create range
+      const startNum = Number(start);
+      const endNum = Number(end);
+      const min = Math.min(startNum, endNum);
+      const max = Math.max(startNum, endNum);
+      
+      const range = [];
+      for (let year = min; year <= max; year++) {
+        const yearStr = String(year);
+        if (yearOptions.includes(yearStr)) {
+          range.push(yearStr);
+        }
+      }
+      setSelectedYears(range);
+    }
+  };
+
   const handleSaveAndNext = async () => {
     try {
       // Save current item first without closing modal
@@ -386,6 +427,8 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
         setSelectedMake(null);
         setSelectedModel(null);
         setSelectedYears([]);
+        setStartYear('');
+        setEndYear('');
         setNewNotes('');
       } else if (page < totalPages) {
         // Load next page and open first item
@@ -411,6 +454,8 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
       setSelectedMake(null);
       setSelectedModel(null);
       setSelectedYears([]);
+      setStartYear('');
+      setEndYear('');
       setNewNotes('');
     } else if (page > 1) {
       // Load previous page and open last item
@@ -428,6 +473,8 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
       setSelectedMake(null);
       setSelectedModel(null);
       setSelectedYears([]);
+      setStartYear('');
+      setEndYear('');
       setNewNotes('');
     } else if (page < totalPages) {
       // Load next page and open first item
@@ -692,53 +739,94 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
                     renderInput={(params) => <TextField {...params} label="Model" size="small" />}
                 />
               </Grid>
-              {/* YEAR - Searchable Autocomplete with multi-select */}
-              <Grid item xs={3}>
-                <Autocomplete
-                  multiple
-                  options={yearOptions}
-                  value={selectedYears}
-                  onChange={(e, newValue) => setSelectedYears(newValue)}
-                  loading={loadingYears}
-                  disabled={!selectedModel}
-                  disableCloseOnSelect
-                  getOptionLabel={(option) => String(option)}
-                  renderOption={(props, option, { selected }) => (
-                    <li {...props}>
-                      <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
-                      {option}
-                    </li>
-                  )}
-                  renderInput={(params) => (
-                    <TextField 
-                      {...params} 
-                      label="Years" 
-                      size="small" 
-                      placeholder="Type to search..."
+              {/* YEAR RANGE SELECTOR */}
+              <Grid item xs={4}>
+                <Box>
+                  <Typography variant="caption" color="textSecondary" sx={{ mb: 0.5, display: 'block' }}>
+                    Year Range
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Autocomplete
+                      options={yearOptions}
+                      value={startYear}
+                      onChange={(e, newValue) => {
+                        setStartYear(newValue || '');
+                        handleYearRangeChange(newValue || '', endYear);
+                      }}
+                      loading={loadingYears}
+                      disabled={!selectedModel}
+                      getOptionLabel={(option) => String(option)}
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          label="Start Year" 
+                          size="small" 
+                          placeholder="Type..."
+                        />
+                      )}
+                      sx={{ flex: 1, minWidth: 100 }}
                     />
+                    <Typography variant="body2" color="textSecondary">to</Typography>
+                    <Autocomplete
+                      options={yearOptions}
+                      value={endYear}
+                      onChange={(e, newValue) => {
+                        setEndYear(newValue || '');
+                        handleYearRangeChange(startYear, newValue || '');
+                      }}
+                      loading={loadingYears}
+                      disabled={!selectedModel || !startYear}
+                      getOptionLabel={(option) => String(option)}
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          label="End Year" 
+                          size="small" 
+                          placeholder="Type..."
+                        />
+                      )}
+                      sx={{ flex: 1, minWidth: 100 }}
+                    />
+                  </Box>
+                  {selectedYears.length > 0 && (
+                    <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Typography variant="caption" color="textSecondary">Selected:</Typography>
+                      {selectedYears.length <= 5 ? (
+                        selectedYears.map(year => (
+                          <Chip key={year} label={year} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
+                        ))
+                      ) : (
+                        <Chip 
+                          label={`${selectedYears.length} years (${selectedYears[0]} - ${selectedYears[selectedYears.length - 1]})`} 
+                          size="small" 
+                          sx={{ height: 20, fontSize: '0.7rem' }} 
+                        />
+                      )}
+                    </Box>
                   )}
-                  renderTags={(value, getTagProps) => {
-                    if (value.length === 0) return null;
-                    if (value.length <= 2) {
-                      return value.map((option, index) => (
-                        <Chip {...getTagProps({ index })} key={option} label={option} size="small" />
-                      ));
-                    }
-                    return <Chip label={`${value.length} years`} size="small" />;
-                  }}
-                  ListboxProps={{ style: { maxHeight: 300 } }}
-                  sx={{ minWidth: 150 }}
-                />
-                {/* Select All Button */}
-                {selectedModel && yearOptions.length > 0 && (
-                  <Button 
-                    size="small" 
-                    onClick={toggleSelectAllYears}
-                    sx={{ mt: 0.5, fontSize: '0.7rem', p: 0.5, minWidth: 'auto' }}
-                  >
-                    {selectedYears.length === yearOptions.length ? 'Deselect All' : 'Select All'}
-                  </Button>
-                )}
+                  {/* Select All Button */}
+                  {selectedModel && yearOptions.length > 0 && (
+                    <Button 
+                      size="small" 
+                      onClick={() => {
+                        if (selectedYears.length === yearOptions.length) {
+                          setStartYear('');
+                          setEndYear('');
+                          setSelectedYears([]);
+                        } else {
+                          const firstYear = yearOptions[yearOptions.length - 1];
+                          const lastYear = yearOptions[0];
+                          setStartYear(firstYear);
+                          setEndYear(lastYear);
+                          setSelectedYears([...yearOptions]);
+                        }
+                      }}
+                      sx={{ mt: 0.5, fontSize: '0.7rem', p: 0.5, minWidth: 'auto' }}
+                    >
+                      {selectedYears.length === yearOptions.length ? 'Clear All' : 'Select All Years'}
+                    </Button>
+                  )}
+                </Box>
               </Grid>
               <Grid item xs={2}><TextField label="Notes" size="small" value={newNotes} onChange={e => setNewNotes(e.target.value)} fullWidth/></Grid>
               <Grid item xs={1}><Button variant="contained" onClick={handleAddVehicle} sx={{height: 40}}><AddIcon /></Button></Grid>
