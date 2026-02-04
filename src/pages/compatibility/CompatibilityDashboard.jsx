@@ -98,6 +98,8 @@ export default function CompatibilityDashboard() {
   const [selectedMake, setSelectedMake] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedYears, setSelectedYears] = useState([]);
+  const [startYear, setStartYear] = useState('');
+  const [endYear, setEndYear] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [pageInputValue, setPageInputValue] = useState('');
 
@@ -137,6 +139,8 @@ export default function CompatibilityDashboard() {
         setSelectedMake(null);
         setSelectedModel(null);
         setSelectedYears([]);
+        setStartYear('');
+        setEndYear('');
         setNewNotes('');
       } else if (pendingNavigation === 'last') {
         const lastItem = listings[listings.length - 1];
@@ -146,6 +150,8 @@ export default function CompatibilityDashboard() {
         setSelectedMake(null);
         setSelectedModel(null);
         setSelectedYears([]);
+        setStartYear('');
+        setEndYear('');
         setNewNotes('');
       }
       setPendingNavigation(null);
@@ -266,6 +272,8 @@ export default function CompatibilityDashboard() {
     setSelectedMake(null);
     setSelectedModel(null);
     setSelectedYears([]);
+    setStartYear('');
+    setEndYear('');
     setNewNotes('');
     fetchMakes();
   };
@@ -281,7 +289,9 @@ export default function CompatibilityDashboard() {
       ]
     }));
     setEditCompatList([...newEntries, ...editCompatList]);
-    setSelectedYears([]); 
+    setSelectedYears([]);
+    setStartYear('');
+    setEndYear('');
     setNewNotes('');
   };
 
@@ -372,6 +382,37 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
     ));
   };
 
+  // Handle year range selection
+  const handleYearRangeChange = (start, end) => {
+    if (!start && !end) {
+      setSelectedYears([]);
+      return;
+    }
+    
+    if (start && !end) {
+      // Only start year selected
+      setSelectedYears([start]);
+      return;
+    }
+    
+    if (start && end) {
+      // Both selected - create range
+      const startNum = Number(start);
+      const endNum = Number(end);
+      const min = Math.min(startNum, endNum);
+      const max = Math.max(startNum, endNum);
+      
+      const range = [];
+      for (let year = min; year <= max; year++) {
+        const yearStr = String(year);
+        if (yearOptions.includes(yearStr)) {
+          range.push(yearStr);
+        }
+      }
+      setSelectedYears(range);
+    }
+  };
+
   const handleSaveAndNext = async () => {
     try {
       // Save current item first without closing modal
@@ -386,6 +427,8 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
         setSelectedMake(null);
         setSelectedModel(null);
         setSelectedYears([]);
+        setStartYear('');
+        setEndYear('');
         setNewNotes('');
       } else if (page < totalPages) {
         // Load next page and open first item
@@ -411,6 +454,8 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
       setSelectedMake(null);
       setSelectedModel(null);
       setSelectedYears([]);
+      setStartYear('');
+      setEndYear('');
       setNewNotes('');
     } else if (page > 1) {
       // Load previous page and open last item
@@ -428,6 +473,8 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
       setSelectedMake(null);
       setSelectedModel(null);
       setSelectedYears([]);
+      setStartYear('');
+      setEndYear('');
       setNewNotes('');
     } else if (page < totalPages) {
       // Load next page and open first item
@@ -604,9 +651,19 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
             <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
               {selectedItem?.title}
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              ID: {selectedItem?.itemId}
-            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Typography variant="body2" color="textSecondary">
+                ID: {selectedItem?.itemId}
+              </Typography>
+              {selectedItem?.sku && (
+                <Chip 
+                  label={`SKU: ${selectedItem.sku}`} 
+                  size="small" 
+                  variant="outlined" 
+                  sx={{ fontSize: '0.75rem' }} 
+                />
+              )}
+            </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Typography variant="caption" sx={{ mr: 1 }}>
@@ -633,6 +690,22 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
         <DialogContent sx={{ p: 0, display: 'flex', height: '75vh' }}>
           
           <Box sx={{ flex: 1, borderRight: '1px solid #eee', p: 2, overflowY: 'auto', bgcolor: '#fafafa' }}>
+            {/* Product Image */}
+            {selectedItem?.mainImageUrl && (
+              <Box sx={{ mb: 2, textAlign: 'center' }}>
+                <img 
+                  src={selectedItem.mainImageUrl} 
+                  alt={selectedItem?.title || 'Product'} 
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: 200, 
+                    objectFit: 'contain', 
+                    borderRadius: 8,
+                    border: '1px solid #ddd'
+                  }} 
+                />
+              </Box>
+            )}
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Item Description Preview</Typography>
             {selectedItem?.descriptionPreview ? (
                 <div style={{ padding: 15, backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: 4 }} dangerouslySetInnerHTML={{ __html: selectedItem.descriptionPreview }} />
@@ -644,9 +717,9 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
                 Compatible Vehicles ({editCompatList.length})
             </Typography>
             
-            <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+            <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 2 }}>
               {/* MAKE */}
-              <Grid item xs={3}>
+              <Grid item xs={2}>
                 <Autocomplete
                     options={makeOptions}
                     value={selectedMake}
@@ -656,7 +729,7 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
                 />
               </Grid>
               {/* MODEL */}
-              <Grid item xs={3}>
+              <Grid item xs={2}>
                 <Autocomplete
                     options={modelOptions}
                     value={selectedModel}
@@ -666,74 +739,91 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
                     renderInput={(params) => <TextField {...params} label="Model" size="small" />}
                 />
               </Grid>
-              {/* YEAR */}
-              <Grid item xs={3}>
-                <FormControl size="small" fullWidth disabled={!selectedModel}>
-                    <InputLabel>Years</InputLabel>
-                    <Select
-                        multiple
-                        value={selectedYears}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          const valuesArray = Array.isArray(value)
-                            ? value
-                            : (typeof value === 'string' ? value.split(',') : []);
-                          if (valuesArray.includes('SELECT_ALL')) {
-                            // Toggle select all
-                            setSelectedYears(
-                              selectedYears.length === yearOptions.length ? [] : [...yearOptions]
-                            );
-                          } else {
-                            // Regular selection
-                            setSelectedYears(valuesArray);
-                          }
-                        }}
-                        input={<OutlinedInput label="Years" />}
-                        renderValue={(selected) => {
-                          if (selected.length === 0) return '';
-                          if (selected.length === 1) return selected[0];
-                          if (selected.length <= 3) return selected.join(', ');
-                          return `${selected.length} years selected`;
-                        }}
-                        MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
+              {/* YEAR RANGE SELECTOR */}
+              <Grid item xs={5}>
+                <Box>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Autocomplete
+                      options={yearOptions}
+                      value={startYear}
+                      onChange={(e, newValue) => {
+                        setStartYear(newValue || '');
+                        handleYearRangeChange(newValue || '', endYear);
+                      }}
+                      loading={loadingYears}
+                      disabled={!selectedModel}
+                      getOptionLabel={(option) => String(option)}
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          label="Start Year" 
+                          size="small" 
+                          placeholder="Type..."
+                        />
+                      )}
+                      sx={{ flex: 1, minWidth: 100 }}
+                    />
+                    <Typography variant="body2" color="textSecondary">to</Typography>
+                    <Autocomplete
+                      options={yearOptions}
+                      value={endYear}
+                      onChange={(e, newValue) => {
+                        setEndYear(newValue || '');
+                        handleYearRangeChange(startYear, newValue || '');
+                      }}
+                      loading={loadingYears}
+                      disabled={!selectedModel || !startYear}
+                      getOptionLabel={(option) => String(option)}
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          label="End Year" 
+                          size="small" 
+                          placeholder="Type..."
+                        />
+                      )}
+                      sx={{ flex: 1, minWidth: 100 }}
+                    />
+                  </Box>
+                  {selectedYears.length > 0 && (
+                    <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Typography variant="caption" color="textSecondary">Selected:</Typography>
+                      {selectedYears.length <= 5 ? (
+                        selectedYears.map(year => (
+                          <Chip key={year} label={year} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
+                        ))
+                      ) : (
+                        <Chip 
+                          label={`${selectedYears.length} years (${selectedYears[0]} - ${selectedYears[selectedYears.length - 1]})`} 
+                          size="small" 
+                          sx={{ height: 20, fontSize: '0.7rem' }} 
+                        />
+                      )}
+                    </Box>
+                  )}
+                  {/* Select All Button */}
+                  {selectedModel && yearOptions.length > 0 && (
+                    <Button 
+                      size="small" 
+                      onClick={() => {
+                        if (selectedYears.length === yearOptions.length) {
+                          setStartYear('');
+                          setEndYear('');
+                          setSelectedYears([]);
+                        } else {
+                          const firstYear = yearOptions[yearOptions.length - 1];
+                          const lastYear = yearOptions[0];
+                          setStartYear(firstYear);
+                          setEndYear(lastYear);
+                          setSelectedYears([...yearOptions]);
+                        }
+                      }}
+                      sx={{ mt: 0.5, fontSize: '0.7rem', p: 0.5, minWidth: 'auto' }}
                     >
-                        {loadingYears ? <MenuItem disabled>Loading...</MenuItem> : (
-                          <>
-                            <MenuItem
-                              value="SELECT_ALL"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                toggleSelectAllYears();
-                              }}
-                            >
-                              <Checkbox 
-                                checked={yearOptions.length > 0 && selectedYears.length === yearOptions.length}
-                                indeterminate={selectedYears.length > 0 && selectedYears.length < yearOptions.length}
-                                size="small" 
-                              />
-                              <ListItemText primary="Select All" sx={{ fontWeight: 'bold' }} />
-                            </MenuItem>
-                            <Divider />
-                             {yearOptions.map((year) => (
-                               <MenuItem
-                                 key={year}
-                                 value={year}
-                                 onClick={(e) => {
-                                   // Prevent default Select onChange from conflicting
-                                   e.preventDefault();
-                                   e.stopPropagation();
-                                   toggleYear(year);
-                                 }}
-                               >
-                                 <Checkbox checked={selectedYears.includes(year)} size="small" />
-                                 <ListItemText primary={year} />
-                               </MenuItem>
-                             ))}
-                          </>
-                        )}
-                    </Select>
-                </FormControl>
+                      {selectedYears.length === yearOptions.length ? 'Clear All' : 'Select All Years'}
+                    </Button>
+                  )}
+                </Box>
               </Grid>
               <Grid item xs={2}><TextField label="Notes" size="small" value={newNotes} onChange={e => setNewNotes(e.target.value)} fullWidth/></Grid>
               <Grid item xs={1}><Button variant="contained" onClick={handleAddVehicle} sx={{height: 40}}><AddIcon /></Button></Grid>
