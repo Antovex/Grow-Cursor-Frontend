@@ -717,9 +717,9 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
                 Compatible Vehicles ({editCompatList.length})
             </Typography>
             
-            <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+            <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 2 }}>
               {/* MAKE */}
-              <Grid item xs={3}>
+              <Grid item xs={2}>
                 <Autocomplete
                     options={makeOptions}
                     value={selectedMake}
@@ -729,7 +729,7 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
                 />
               </Grid>
               {/* MODEL */}
-              <Grid item xs={3}>
+              <Grid item xs={2}>
                 <Autocomplete
                     options={modelOptions}
                     value={selectedModel}
@@ -740,11 +740,8 @@ Resets in: ${rateLimitInfo.hoursUntilReset} hour${rateLimitInfo.hoursUntilReset 
                 />
               </Grid>
               {/* YEAR RANGE SELECTOR */}
-              <Grid item xs={4}>
+              <Grid item xs={5}>
                 <Box>
-                  <Typography variant="caption" color="textSecondary" sx={{ mb: 0.5, display: 'block' }}>
-                    Year Range
-                  </Typography>
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                     <Autocomplete
                       options={yearOptions}
