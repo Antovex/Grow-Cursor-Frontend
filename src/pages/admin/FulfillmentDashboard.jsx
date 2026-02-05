@@ -74,6 +74,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 import ColumnSelector from '../../components/ColumnSelector';
 import { downloadCSV, prepareCSVData } from '../../utils/csvExport';
+import api from '../../lib/api';
 
 // Remark dropdown options
 const REMARK_OPTIONS = [
@@ -1056,6 +1057,7 @@ function FulfillmentDashboard() {
   const [searchMarketplace, setSearchMarketplace] = useState(() => getInitialState('searchMarketplace', ''));
   const [searchPaymentStatus, setSearchPaymentStatus] = useState(() => getInitialState('searchPaymentStatus', ''));
   const [excludeLowValue, setExcludeLowValue] = useState(() => getInitialState('excludeLowValue', false));
+  const [dateFilter, setDateFilter] = useState(() => getInitialState('dateFilter', ''));
   const [filtersExpanded, setFiltersExpanded] = useState(() => getInitialState('filtersExpanded', false));
   
   // Close filters by default on mobile
@@ -1087,6 +1089,15 @@ function FulfillmentDashboard() {
 
   // Editing item status
   const [editingItemStatus, setEditingItemStatus] = useState({});
+
+  // Remark message confirmation state
+  const [remarkConfirmOpen, setRemarkConfirmOpen] = useState(false);
+  const [pendingRemarkUpdate, setPendingRemarkUpdate] = useState(null);
+  const [sendingRemarkMessage, setSendingRemarkMessage] = useState(false);
+
+  // CSV Export dialog state
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  // selectedExportColumns is initialized after ALL_COLUMNS is defined
 
   // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -1155,6 +1166,9 @@ function FulfillmentDashboard() {
     { id: 'messagingStatus', label: 'Messaging' },
     { id: 'remark', label: 'Remark' }
   ];
+
+  // CSV Export column selection - initialized after ALL_COLUMNS is defined
+  const [selectedExportColumns, setSelectedExportColumns] = useState(ALL_COLUMNS.map(c => c.id));
 
   const [visibleColumns, setVisibleColumns] = useState(() =>
     getInitialState('visibleColumns', DEFAULT_VISIBLE_COLUMNS)
