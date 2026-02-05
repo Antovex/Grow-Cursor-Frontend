@@ -111,7 +111,7 @@ export default function AsinReviewModal({
     try {
       // Convert edited items to array format (exclude errors and loading items)
       const listingsToSave = previewItems
-        .filter(item => item.status !== 'error' && item.status !== 'loading')
+        .filter(item => !['error', 'loading', 'blocked'].includes(item.status))
         .map(item => editedItems[item.id] || item.generatedListing);
       
       await onSave(listingsToSave);
@@ -141,6 +141,7 @@ export default function AsinReviewModal({
         return <CheckIcon color="success" />;
       case 'warning':
         return <WarningIcon color="warning" />;
+      case 'blocked':
       case 'error':
         return <ErrorIcon color="error" />;
       default:
@@ -157,6 +158,7 @@ export default function AsinReviewModal({
         return 'success';
       case 'warning':
         return 'warning';
+      case 'blocked':
       case 'error':
         return 'error';
       default:
@@ -218,9 +220,9 @@ export default function AsinReviewModal({
               variant="contained"
               startIcon={<SaveIcon />}
               onClick={handleSaveAll}
-              disabled={saving || previewItems.every(i => i.status === 'error' || i.status === 'loading')}
+              disabled={saving || previewItems.every(i => ['error', 'loading', 'blocked'].includes(i.status))}
             >
-              {saving ? 'Saving...' : `Save All (${previewItems.filter(i => i.status !== 'error' && i.status !== 'loading').length})`}
+              {saving ? 'Saving...' : `Save All (${previewItems.filter(i => !['error', 'loading', 'blocked'].includes(i.status)).length})`}
             </Button>
             <IconButton onClick={handleClose}>
               <CloseIcon />
