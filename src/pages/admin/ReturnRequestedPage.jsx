@@ -26,6 +26,10 @@ import {
   OutlinedInput,
   Switch,
   FormControlLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -104,6 +108,7 @@ export default function ReturnRequestedPage({
     { id: 'responseDue', label: 'Response Due (PST)' },
     { id: 'orderId', label: 'Order ID' },
     { id: 'productName', label: 'Product Name' },
+    { id: 'dateSold', label: 'Date Sold (PST)' },
     { id: 'seller', label: 'Seller' },
     { id: 'buyer', label: 'Buyer' },
     { id: 'item', label: 'Item' },
@@ -143,6 +148,16 @@ export default function ReturnRequestedPage({
   );
 
   const hasFetchedInitialData = useRef(false);
+
+  // Export dialog state
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportSource, setExportSource] = useState('page'); // 'page' = current page, 'custom' = date range
+  const [exportDateMode, setExportDateMode] = useState('all'); // 'all', 'single', 'range'
+  const [exportSingleDate, setExportSingleDate] = useState('');
+  const [exportFromDate, setExportFromDate] = useState('');
+  const [exportToDate, setExportToDate] = useState('');
+  const [exportFilename, setExportFilename] = useState('Return_Requests');
 
   // Fetch sellers on mount
   useEffect(() => {
@@ -385,6 +400,83 @@ export default function ReturnRequestedPage({
     }
   };
 
+  // Handle CSV export with date filter and all data
+  const handleExportCSV = async () => {
+    setExportLoading(true);
+    try {
+      let exportData;
+
+      if (exportSource === 'page') {
+        // Export current page data directly
+        exportData = returns;
+      } else {
+        // Fetch data with custom date filter
+        const params = { limit: 10000 }; // High limit to get all results
+        if (statusFilter) params.status = statusFilter;
+        if (sellerFilter) params.sellerId = sellerFilter;
+        if (reasonFilter.length > 0) params.reason = reasonFilter.join(',');
+
+        // Apply export date filter
+        if (exportDateMode === 'single' && exportSingleDate) {
+          params.startDate = exportSingleDate;
+          params.endDate = exportSingleDate;
+        } else if (exportDateMode === 'range') {
+          if (exportFromDate) params.startDate = exportFromDate;
+          if (exportToDate) params.endDate = exportToDate;
+        }
+
+        const res = await api.get('/ebay/stored-returns', { params });
+        exportData = res.data.returns || [];
+      }
+
+      if (exportData.length === 0) {
+        setSnackbarMsg('No data to export');
+        setSnackbarOpen(true);
+        setExportLoading(false);
+        return;
+      }
+
+      const csvData = prepareCSVData(exportData, {
+        'Return ID': 'returnId',
+        'Order ID': 'orderId',
+        'Product Name': 'productName',
+        'Date Sold': (r) => r.dateSold ? new Date(r.dateSold).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' }) : '',
+        'Seller': (r) => r.seller?.user?.username || '',
+        'Buyer': 'buyerUsername',
+        'Reason': (r) => {
+          const reason = r.returnReason?.value || r.returnReason || '';
+          const reasonLabels = {
+            'WRONG_SIZE': 'Does not fit',
+            'DOES_NOT_FIT': "Doesn't fit my vehicle",
+            'NOT_AS_DESCRIBED': 'Not As Described',
+            'DEFECTIVE_ITEM': 'Defective Item',
+            'NO_LONGER_NEED_ITEM': 'No Longer Needed',
+            'ORDERED_ACCIDENTALLY': 'Ordered Accidentally',
+            'ARRIVED_DAMAGED': 'Arrived Damaged',
+            'MISSING_PARTS': 'Missing Parts',
+            'OTHER': 'Other'
+          };
+          return reasonLabels[reason] || reason;
+        },
+        'Status': (r) => r.currentStatus || r.returnRequest?.currentType || '',
+        'RMA Number': 'RMANumber',
+        'Created Date': (r) => r.creationDate ? new Date(r.creationDate).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' }) : '',
+        'Response Due': (r) => r.responseDate ? new Date(r.responseDate).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' }) : '',
+        'Logs': 'logs',
+      });
+
+      downloadCSV(csvData, exportFilename || 'Return_Requests');
+      setExportDialogOpen(false);
+      setSnackbarMsg(`Successfully exported ${exportData.length} returns`);
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('Export failed:', err);
+      setError('Failed to export data: ' + err.message);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -456,37 +548,9 @@ export default function ReturnRequestedPage({
           variant="outlined"
           color="success"
           startIcon={<DownloadIcon />}
-          onClick={() => {
-            const csvData = prepareCSVData(returns, {
-              'Return ID': 'returnId',
-              'Order ID': 'orderId',
-              'Seller': (r) => r.seller?.user?.username || '',
-              'Buyer': 'buyerUsername',
-              'Reason': (r) => {
-                const reason = r.returnReason?.value || r.returnReason || '';
-                const reasonLabels = {
-                  'WRONG_SIZE': 'Does not fit',
-                  'DOES_NOT_FIT': "Doesn't fit my vehicle",
-                  'NOT_AS_DESCRIBED': 'Not As Described',
-                  'DEFECTIVE_ITEM': 'Defective Item',
-                  'NO_LONGER_NEED_ITEM': 'No Longer Needed',
-                  'ORDERED_ACCIDENTALLY': 'Ordered Accidentally',
-                  'ARRIVED_DAMAGED': 'Arrived Damaged',
-                  'MISSING_PARTS': 'Missing Parts',
-                  'OTHER': 'Other'
-                };
-                return reasonLabels[reason] || reason;
-              },
-              'Status': (r) => r.currentStatus || r.returnRequest?.currentType || '',
-              'RMA Number': 'RMANumber',
-              'Created Date': (r) => r.creationDate ? new Date(r.creationDate).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' }) : '',
-              'Logs': 'logs',
-            });
-            downloadCSV(csvData, 'Return_Requests');
-          }}
-          disabled={returns.length === 0}
+          onClick={() => setExportDialogOpen(true)}
         >
-          Download CSV ({returns.length})
+          Export CSV
         </Button>
         <ColumnSelector
           allColumns={ALL_COLUMNS}
@@ -720,6 +784,7 @@ export default function ReturnRequestedPage({
                 {visibleColumns.includes('responseDue') && <TableCell sx={{ backgroundColor: '#f5f5f5', position: 'sticky', top: 0, zIndex: 100 }}><strong>Response Due (PST)</strong></TableCell>}
                 {visibleColumns.includes('orderId') && <TableCell sx={{ backgroundColor: '#f5f5f5', position: 'sticky', top: 0, zIndex: 100 }}><strong>Order ID</strong></TableCell>}
                 {visibleColumns.includes('productName') && <TableCell sx={{ backgroundColor: '#f5f5f5', position: 'sticky', top: 0, zIndex: 100, minWidth: 300 }}><strong>Product Name</strong></TableCell>}
+                {visibleColumns.includes('dateSold') && <TableCell sx={{ backgroundColor: '#f5f5f5', position: 'sticky', top: 0, zIndex: 100 }}><strong>Date Sold (PST)</strong></TableCell>}
                 {visibleColumns.includes('seller') && <TableCell sx={{ backgroundColor: '#f5f5f5', position: 'sticky', top: 0, zIndex: 100 }}><strong>Seller</strong></TableCell>}
                 {visibleColumns.includes('buyer') && <TableCell sx={{ backgroundColor: '#f5f5f5', position: 'sticky', top: 0, zIndex: 100 }}><strong>Buyer</strong></TableCell>}
                 {visibleColumns.includes('item') && <TableCell sx={{ backgroundColor: '#f5f5f5', position: 'sticky', top: 0, zIndex: 100 }}><strong>Item</strong></TableCell>}
@@ -734,7 +799,7 @@ export default function ReturnRequestedPage({
             <TableBody>
               {returns.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={14} align="center">
+                  <TableCell colSpan={15} align="center">
                     <Typography variant="body2" color="text.secondary" py={2}>
                       No return requests found. Click "Fetch Returns from eBay" to load data.
                     </Typography>
@@ -831,6 +896,11 @@ export default function ReturnRequestedPage({
                           </IconButton>
                         )}
                       </Stack>
+                    </TableCell>}
+                    {visibleColumns.includes('dateSold') && <TableCell>
+                      <Typography variant="body2" fontSize="0.75rem">
+                        {ret.dateSold ? formatDate(ret.dateSold) : '-'}
+                      </Typography>
                     </TableCell>}
                     {visibleColumns.includes('seller') && <TableCell>
                       <Typography variant="body2">{ret.seller?.user?.username || '-'}</Typography>
@@ -965,6 +1035,113 @@ export default function ReturnRequestedPage({
           orderId={selectedOrderId}
         />
       )}
+
+      {/* Export CSV Dialog */}
+      <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Export Returns to CSV</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            {/* Filename Input */}
+            <TextField
+              label="Filename"
+              value={exportFilename}
+              onChange={(e) => setExportFilename(e.target.value)}
+              fullWidth
+              helperText=".csv will be added automatically"
+              size="small"
+            />
+
+            {/* Export Source Selection */}
+            <FormControl fullWidth size="small">
+              <InputLabel>Export Data</InputLabel>
+              <Select
+                value={exportSource}
+                onChange={(e) => setExportSource(e.target.value)}
+                label="Export Data"
+              >
+                <MenuItem value="page">Current Page ({returns.length} items)</MenuItem>
+                <MenuItem value="custom">Custom Date Range</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Date filter options - only show for custom export */}
+            {exportSource === 'custom' && (
+              <>
+                {/* Date Mode Selection */}
+                <FormControl fullWidth size="small">
+                  <InputLabel>Date Filter</InputLabel>
+                  <Select
+                    value={exportDateMode}
+                    onChange={(e) => setExportDateMode(e.target.value)}
+                    label="Date Filter"
+                  >
+                    <MenuItem value="all">All Dates (No Filter)</MenuItem>
+                    <MenuItem value="single">Single Date</MenuItem>
+                    <MenuItem value="range">Date Range</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {/* Single Date Input */}
+                {exportDateMode === 'single' && (
+                  <TextField
+                    label="Select Date"
+                    type="date"
+                    value={exportSingleDate}
+                    onChange={(e) => setExportSingleDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                    size="small"
+                  />
+                )}
+
+                {/* Date Range Inputs */}
+                {exportDateMode === 'range' && (
+                  <Stack direction="row" spacing={2}>
+                    <TextField
+                      label="From Date"
+                      type="date"
+                      value={exportFromDate}
+                      onChange={(e) => setExportFromDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                      size="small"
+                    />
+                    <TextField
+                      label="To Date"
+                      type="date"
+                      value={exportToDate}
+                      onChange={(e) => setExportToDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                      size="small"
+                    />
+                  </Stack>
+                )}
+              </>
+            )}
+
+            <Typography variant="caption" color="text.secondary">
+              {exportSource === 'page'
+                ? 'This will export only the returns currently shown on this page.'
+                : 'This will export ALL returns matching the selected filters (not limited to current page). Current page filters (seller, status, reason) will also be applied.'}
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExportDialogOpen(false)} disabled={exportLoading}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleExportCSV}
+            disabled={exportLoading}
+            startIcon={exportLoading ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+          >
+            {exportLoading ? 'Exporting...' : 'Export CSV'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
