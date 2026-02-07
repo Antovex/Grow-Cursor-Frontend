@@ -25,7 +25,8 @@ import {
   Warning as WarningIcon,
   Error as ErrorIcon,
   CheckCircle as CheckIcon,
-  HourglassEmpty as LoadingIcon
+  HourglassEmpty as LoadingIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 
 export default function AsinReviewModal({ 
@@ -37,10 +38,13 @@ export default function AsinReviewModal({
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [editedItems, setEditedItems] = useState({});
+  const [dismissedItems, setDismissedItems] = useState(new Set());
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  const currentItem = previewItems[currentIndex];
+  // Filter out dismissed items
+  const activeItems = previewItems.filter(item => !dismissedItems.has(item.id));
+  const currentItem = activeItems[currentIndex];
   const itemData = editedItems[currentItem?.id] || currentItem?.generatedListing || {};
 
   // Initialize edited items from preview data
@@ -75,7 +79,7 @@ export default function AsinReviewModal({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, currentIndex, previewItems.length, hasUnsavedChanges]);
+  }, [open, currentIndex, activeItems.length, hasUnsavedChanges]);
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
@@ -84,9 +88,22 @@ export default function AsinReviewModal({
   };
 
   const handleNext = () => {
-    if (currentIndex < previewItems.length - 1) {
+    if (currentIndex < activeItems.length - 1) {
       setCurrentIndex(currentIndex + 1);
     }
+  };
+
+  const handleDismiss = () => {
+    if (!currentItem) return;
+    
+    // Add to dismissed set
+    setDismissedItems(prev => new Set([...prev, currentItem.id]));
+    
+    // Navigate to next item, or previous if we're at the end
+    if (currentIndex >= activeItems.length - 1 && currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+    // If this was the last item, currentIndex stays the same but will show next remaining item
   };
 
   const handleFieldChange = (field, value, isCustomField = false) => {
@@ -109,8 +126,8 @@ export default function AsinReviewModal({
   const handleSaveAll = async () => {
     setSaving(true);
     try {
-      // Convert edited items to array format (exclude errors and loading items)
-      const listingsToSave = previewItems
+      // Convert edited items to array format (exclude errors, loading, blocked, and dismissed items)
+      const listingsToSave = activeItems
         .filter(item => !['error', 'loading', 'blocked'].includes(item.status))
         .map(item => editedItems[item.id] || item.generatedListing);
       
@@ -203,26 +220,43 @@ export default function AsinReviewModal({
               Review Generated Listings
             </Typography>
             <Chip 
-              label={`${currentIndex + 1} of ${previewItems.length}`}
+              label={`${currentIndex + 1} of ${activeItems.length}`}
               color="primary"
               size="small"
             />
+            {dismissedItems.size > 0 && (
+              <Chip 
+                label={`${dismissedItems.size} dismissed`}
+                color="default"
+                size="small"
+                variant="outlined"
+              />
+            )}
             <Chip
-              icon={getStatusIcon(currentItem.status)}
-              label={currentItem.status}
-              color={getStatusColor(currentItem.status)}
+              icon={getStatusIcon(currentItem?.status)}
+              label={currentItem?.status || 'N/A'}
+              color={getStatusColor(currentItem?.status)}
               size="small"
             />
           </Box>
           
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={handleDismiss}
+              disabled={!currentItem || activeItems.length === 0}
+            >
+              Dismiss
+            </Button>
+            <Button
               variant="contained"
               startIcon={<SaveIcon />}
               onClick={handleSaveAll}
-              disabled={saving || previewItems.every(i => ['error', 'loading', 'blocked'].includes(i.status))}
+              disabled={saving || activeItems.every(i => ['error', 'loading', 'blocked'].includes(i.status))}
             >
-              {saving ? 'Saving...' : `Save All (${previewItems.filter(i => !['error', 'loading', 'blocked'].includes(i.status)).length})`}
+              {saving ? 'Saving...' : `Save All (${activeItems.filter(i => !['error', 'loading', 'blocked'].includes(i.status)).length})`}
             </Button>
             <IconButton onClick={handleClose}>
               <CloseIcon />
@@ -234,7 +268,7 @@ export default function AsinReviewModal({
         <Box sx={{ bgcolor: 'white', px: 2, pb: 1 }}>
           <LinearProgress 
             variant="determinate" 
-            value={((currentIndex + 1) / previewItems.length) * 100}
+            value={activeItems.length > 0 ? ((currentIndex + 1) / activeItems.length) * 100 : 0}
             sx={{ height: 8, borderRadius: 1 }}
           />
         </Box>
@@ -538,7 +572,7 @@ export default function AsinReviewModal({
           <Button
             endIcon={<NextIcon />}
             onClick={handleNext}
-            disabled={currentIndex === previewItems.length - 1}
+            disabled={currentIndex === activeItems.length - 1}
           >
             Next
           </Button>
