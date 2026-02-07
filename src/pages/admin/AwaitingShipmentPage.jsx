@@ -36,42 +36,42 @@ import api from '../../lib/api';
 import ColumnSelector from '../../components/ColumnSelector';
 
 const ALL_COLUMNS = [
-    { id: 'seller', label: 'Seller' },
-    { id: 'orderId', label: 'Order ID' },
-    { id: 'dateSold', label: 'Date Sold' },
-    { id: 'shipBy', label: 'Ship By' },
-    { id: 'deliveryDate', label: 'Delivery Date' },
-    { id: 'productName', label: 'Product Name' },
-    { id: 'buyerName', label: 'Buyer Name' },
-    { id: 'shippingAddress', label: 'Shipping Address' },
-    { id: 'marketplace', label: 'Marketplace' },
-    { id: 'subtotal', label: 'Subtotal' },
-    { id: 'shipping', label: 'Shipping' },
-    { id: 'salesTax', label: 'Sales Tax' },
-    { id: 'discount', label: 'Discount' },
-    { id: 'transactionFees', label: 'Transaction Fees' },
-    { id: 'adFeeGeneral', label: 'Ad Fee General' },
-    { id: 'cancelStatus', label: 'Cancel Status' },
-    { id: 'refunds', label: 'Refunds' },
-    { id: 'refundItemAmount', label: 'Refund Item' },
-    { id: 'refundTaxAmount', label: 'Refund Tax' },
-    { id: 'refundTotalToBuyer', label: 'Refund Total' },
-    { id: 'orderTotalAfterRefund', label: 'Order Total (After Refund)' },
-    { id: 'orderEarnings', label: 'Order Earnings' },
-    { id: 'trackingNumber', label: 'Tracking Number' },
-    { id: 'manualTracking', label: 'Manual Tracking' },
-    { id: 'zipcode', label: 'Zipcode' },
-    { id: 'amazonAccount', label: 'Amazon Acc' },
-    { id: 'arriving', label: 'Arriving' },
-    { id: 'beforeTax', label: 'Before Tax' },
-    { id: 'estimatedTax', label: 'Estimated Tax' },
-    { id: 'azOrderId', label: 'Az OrderID' },
-    { id: 'amazonRefund', label: 'Amazon Refund' },
-    { id: 'cardName', label: 'Card Name' },
-    { id: 'notes', label: 'Notes' },
-    { id: 'messagingStatus', label: 'Messaging' },
-    { id: 'remark', label: 'Remark' }
-  ];
+  { id: 'seller', label: 'Seller' },
+  { id: 'orderId', label: 'Order ID' },
+  { id: 'dateSold', label: 'Date Sold' },
+  { id: 'shipBy', label: 'Ship By' },
+  { id: 'deliveryDate', label: 'Delivery Date' },
+  { id: 'productName', label: 'Product Name' },
+  { id: 'buyerName', label: 'Buyer Name' },
+  { id: 'shippingAddress', label: 'Shipping Address' },
+  { id: 'marketplace', label: 'Marketplace' },
+  { id: 'subtotal', label: 'Subtotal' },
+  { id: 'shipping', label: 'Shipping' },
+  { id: 'salesTax', label: 'Sales Tax' },
+  { id: 'discount', label: 'Discount' },
+  { id: 'transactionFees', label: 'Transaction Fees' },
+  { id: 'adFeeGeneral', label: 'Ad Fee General' },
+  { id: 'cancelStatus', label: 'Cancel Status' },
+  { id: 'refunds', label: 'Refunds' },
+  { id: 'refundItemAmount', label: 'Refund Item' },
+  { id: 'refundTaxAmount', label: 'Refund Tax' },
+  { id: 'refundTotalToBuyer', label: 'Refund Total' },
+  { id: 'orderTotalAfterRefund', label: 'Order Total (After Refund)' },
+  { id: 'orderEarnings', label: 'Order Earnings' },
+  { id: 'trackingNumber', label: 'Tracking Number' },
+  { id: 'manualTracking', label: 'Manual Tracking' },
+  { id: 'zipcode', label: 'Zipcode' },
+  { id: 'amazonAccount', label: 'Amazon Acc' },
+  { id: 'arriving', label: 'Arriving' },
+  { id: 'beforeTax', label: 'Before Tax' },
+  { id: 'estimatedTax', label: 'Estimated Tax' },
+  { id: 'azOrderId', label: 'Az OrderID' },
+  { id: 'amazonRefund', label: 'Amazon Refund' },
+  { id: 'cardName', label: 'Card Name' },
+  { id: 'notes', label: 'Notes' },
+  { id: 'messagingStatus', label: 'Messaging' },
+  { id: 'remark', label: 'Remark' }
+];
 
 // ... (Rest of the file remains unchanged until ManualTrackingCell)
 
@@ -96,7 +96,7 @@ function ManualTrackingCell({ order, onSaved, onCopy, onNotify }) {
   const [error, setError] = useState('');
   const [uploadMode, setUploadMode] = useState('bulk'); // 'bulk' or 'individual'
   const [individualTracking, setIndividualTracking] = useState({}); // { itemId: { trackingNumber, carrier } }
-  
+
   const uniqueItemIds = getUniqueItemIds(order);
   const multipleItems = uniqueItemIds.length > 1;
 
@@ -422,7 +422,7 @@ export default function AwaitingShipmentPage() {
   const [searchMarketplace, setSearchMarketplace] = useState('');
 
   const [visibleColumns, setVisibleColumns] = useState([
-    'seller', 'orderId', 'marketplace', 'dateSold', 'shipBy', 'productName', 'buyerName', 'shippingAddress', 'trackingNumber', 'notes' 
+    'seller', 'orderId', 'marketplace', 'dateSold', 'shipBy', 'productName', 'buyerName', 'shippingAddress', 'trackingNumber', 'notes'
   ]); // Default specific to Awaiting Shipment needs, or use ALL_COLUMNS.map(c => c.id)
 
   const formatCurrency = (value) => {
@@ -602,141 +602,157 @@ export default function AwaitingShipmentPage() {
       case 'seller':
         return order.seller?.user?.username || order.seller?.user?.email || order.sellerId || '-';
       case 'orderId':
-         return (
-             <Typography variant="body2" fontWeight="medium" sx={{ color: 'primary.main' }}>
-                 {order.orderId || order.legacyOrderId || '-'}
-             </Typography>
-         );
+        return (
+          <Typography variant="body2" fontWeight="medium" sx={{ color: 'primary.main' }}>
+            {order.orderId || order.legacyOrderId || '-'}
+          </Typography>
+        );
       case 'marketplace':
-          return (
-              <Chip
-                label={order.purchaseMarketplaceId || 'Unknown'}
-                size="small"
-                variant="outlined"
-                color={
-                  order.purchaseMarketplaceId === 'EBAY_US' ? 'primary' :
-                  order.purchaseMarketplaceId === 'EBAY_CA' || order.purchaseMarketplaceId === 'EBAY_ENCA' ? 'secondary' :
+        return (
+          <Chip
+            label={order.purchaseMarketplaceId || 'Unknown'}
+            size="small"
+            variant="outlined"
+            color={
+              order.purchaseMarketplaceId === 'EBAY_US' ? 'primary' :
+                order.purchaseMarketplaceId === 'EBAY_CA' || order.purchaseMarketplaceId === 'EBAY_ENCA' ? 'secondary' :
                   order.purchaseMarketplaceId === 'EBAY_AU' ? 'success' : 'default'
-                }
-              />
-          );
+            }
+          />
+        );
       case 'dateSold':
-          return formatDate(order.dateSold, order.purchaseMarketplaceId);
-      case 'shipBy':
-          return formatDate(order.shipByDate || order.lineItems?.[0]?.lineItemFulfillmentInstructions?.shipByDate, order.purchaseMarketplaceId);
+        return formatDate(order.dateSold, order.purchaseMarketplaceId);
+      case 'shipBy': {
+        const shipByDateStr = order.shipByDate || order.lineItems?.[0]?.lineItemFulfillmentInstructions?.shipByDate;
+        if (!shipByDateStr) return '-';
+
+        // Check if ship-by date is within 24 hours of current IST time
+        const shipByDate = new Date(shipByDateStr);
+        const nowIST = new Date(); // Current time (system already in IST)
+        const twentyFourHoursFromNow = new Date(nowIST.getTime() + 24 * 60 * 60 * 1000);
+
+        // Highlight in red if: ship-by date is in the future AND within 24 hours
+        const isUrgent = shipByDate > nowIST && shipByDate <= twentyFourHoursFromNow;
+
+        return (
+          <Box sx={isUrgent ? { color: 'error.main', fontWeight: 'bold' } : {}}>
+            {formatDate(shipByDateStr, order.purchaseMarketplaceId)}
+          </Box>
+        );
+      }
       case 'deliveryDate':
-          return formatDate(order.expectedDeliveryDate, order.purchaseMarketplaceId);
+        return formatDate(order.expectedDeliveryDate, order.purchaseMarketplaceId);
       case 'productName':
-          return (
-              <Stack spacing={0.5} sx={{ minWidth: 250, maxWidth: 350 }}>
-                {order.lineItems && order.lineItems.length > 0 ? (
-                  order.lineItems.map((item, i) => (
-                    <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, borderBottom: i < order.lineItems.length - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none', pb: i < order.lineItems.length - 1 ? 0.5 : 0 }}>
-                      <Chip label={`x${item.quantity}`} size="small" sx={{ height: 20, minWidth: 30, fontWeight: 'bold', fontSize: '0.7rem', backgroundColor: item.quantity > 1 ? '#ed6c02' : '#e0e0e0', color: item.quantity > 1 ? '#fff' : 'rgba(0,0,0,0.87)' }} />
-                      <Tooltip title={item.title || '-'} arrow>
-                        <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.875rem' }}>{item.title || '-'}</Typography>
-                      </Tooltip>
-                      <IconButton size="small" onClick={() => handleCopy(item.title || '-')} sx={{ p: 0.5 }}><ContentCopyIcon fontSize="small" sx={{ fontSize: 14 }} /></IconButton>
-                    </Box>
-                  ))
-                ) : <Typography variant="body2">-</Typography>}
-              </Stack>
-          );
+        return (
+          <Stack spacing={0.5} sx={{ minWidth: 250, maxWidth: 350 }}>
+            {order.lineItems && order.lineItems.length > 0 ? (
+              order.lineItems.map((item, i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, borderBottom: i < order.lineItems.length - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none', pb: i < order.lineItems.length - 1 ? 0.5 : 0 }}>
+                  <Chip label={`x${item.quantity}`} size="small" sx={{ height: 20, minWidth: 30, fontWeight: 'bold', fontSize: '0.7rem', backgroundColor: item.quantity > 1 ? '#ed6c02' : '#e0e0e0', color: item.quantity > 1 ? '#fff' : 'rgba(0,0,0,0.87)' }} />
+                  <Tooltip title={item.title || '-'} arrow>
+                    <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.875rem' }}>{item.title || '-'}</Typography>
+                  </Tooltip>
+                  <IconButton size="small" onClick={() => handleCopy(item.title || '-')} sx={{ p: 0.5 }}><ContentCopyIcon fontSize="small" sx={{ fontSize: 14 }} /></IconButton>
+                </Box>
+              ))
+            ) : <Typography variant="body2">-</Typography>}
+          </Stack>
+        );
       case 'buyerName':
-          return (
-              <Box>
-                <Tooltip title={order.buyer?.buyerRegistrationAddress?.fullName || '-'} arrow>
-                  <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>
-                    {order.buyer?.buyerRegistrationAddress?.fullName || '-'}
-                  </Typography>
-                </Tooltip>
-                <IconButton size="small" onClick={() => handleCopy(order.buyer?.buyerRegistrationAddress?.fullName || '-')}><ContentCopyIcon fontSize="small" /></IconButton>
-              </Box>
-          );
+        return (
+          <Box>
+            <Tooltip title={order.buyer?.buyerRegistrationAddress?.fullName || '-'} arrow>
+              <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>
+                {order.buyer?.buyerRegistrationAddress?.fullName || '-'}
+              </Typography>
+            </Tooltip>
+            <IconButton size="small" onClick={() => handleCopy(order.buyer?.buyerRegistrationAddress?.fullName || '-')}><ContentCopyIcon fontSize="small" /></IconButton>
+          </Box>
+        );
       case 'zipcode':
-          return (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">{order.shippingPostalCode || order.buyer?.buyerRegistrationAddress?.postalCode || '-'}</Typography>
-                <IconButton size="small" onClick={() => handleCopy(order.shippingPostalCode || order.buyer?.buyerRegistrationAddress?.postalCode || '-')}><ContentCopyIcon fontSize="small" /></IconButton>
-              </Box>
-          );
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2">{order.shippingPostalCode || order.buyer?.buyerRegistrationAddress?.postalCode || '-'}</Typography>
+            <IconButton size="small" onClick={() => handleCopy(order.shippingPostalCode || order.buyer?.buyerRegistrationAddress?.postalCode || '-')}><ContentCopyIcon fontSize="small" /></IconButton>
+          </Box>
+        );
       case 'shippingAddress':
-          return (
-              <Box sx={{ maxWidth: 300 }}>
-                {expandedShipping[order._id] ? (
-                  <Stack spacing={0.5}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography variant="body2" fontWeight="medium" sx={{ flex: 1 }}>{order.shippingFullName || '-'}</Typography>
-                      <IconButton size="small" onClick={() => handleCopy(order.shippingFullName)}><ContentCopyIcon fontSize="small" /></IconButton>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography variant="caption" sx={{ flex: 1 }}>{order.shippingAddressLine1 || '-'}</Typography>
-                      <IconButton size="small" onClick={() => handleCopy(order.shippingAddressLine1)}><ContentCopyIcon fontSize="small" /></IconButton>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography variant="caption" sx={{ flex: 1 }}>{order.shippingCity || '-'}</Typography>
-                      <IconButton size="small" onClick={() => handleCopy(order.shippingCity)}><ContentCopyIcon fontSize="small" /></IconButton>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography variant="caption" sx={{ flex: 1 }}>{order.shippingState || '-'}</Typography>
-                      <IconButton size="small" onClick={() => handleCopy(order.shippingState)}><ContentCopyIcon fontSize="small" /></IconButton>
-                    </Box>
-                    <IconButton size="small" onClick={() => toggleShippingExpanded(order._id)}><ExpandLessIcon /></IconButton>
-                  </Stack>
-                ) : (
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {order.shippingCity}, {order.shippingState} {order.shippingPostalCode}
-                    </Typography>
-                    <IconButton size="small" onClick={() => toggleShippingExpanded(order._id)}><ExpandMoreIcon /></IconButton>
-                  </Stack>
-                )}
-              </Box>
-          );
+        return (
+          <Box sx={{ maxWidth: 300 }}>
+            {expandedShipping[order._id] ? (
+              <Stack spacing={0.5}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="body2" fontWeight="medium" sx={{ flex: 1 }}>{order.shippingFullName || '-'}</Typography>
+                  <IconButton size="small" onClick={() => handleCopy(order.shippingFullName)}><ContentCopyIcon fontSize="small" /></IconButton>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" sx={{ flex: 1 }}>{order.shippingAddressLine1 || '-'}</Typography>
+                  <IconButton size="small" onClick={() => handleCopy(order.shippingAddressLine1)}><ContentCopyIcon fontSize="small" /></IconButton>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" sx={{ flex: 1 }}>{order.shippingCity || '-'}</Typography>
+                  <IconButton size="small" onClick={() => handleCopy(order.shippingCity)}><ContentCopyIcon fontSize="small" /></IconButton>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" sx={{ flex: 1 }}>{order.shippingState || '-'}</Typography>
+                  <IconButton size="small" onClick={() => handleCopy(order.shippingState)}><ContentCopyIcon fontSize="small" /></IconButton>
+                </Box>
+                <IconButton size="small" onClick={() => toggleShippingExpanded(order._id)}><ExpandLessIcon /></IconButton>
+              </Stack>
+            ) : (
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {order.shippingCity}, {order.shippingState} {order.shippingPostalCode}
+                </Typography>
+                <IconButton size="small" onClick={() => toggleShippingExpanded(order._id)}><ExpandMoreIcon /></IconButton>
+              </Stack>
+            )}
+          </Box>
+        );
       case 'manualTracking':
-          return (
-            <ManualTrackingCell
-              order={order}
-              onSaved={(tracking) => {
-                setOrders(prev => prev.map(o => o._id === order._id ? { ...o, manualTrackingNumber: tracking } : o));
-              }}
-              onCopy={handleCopy}
-              onNotify={(sev, msg) => showSnack(sev, msg)}
-            />
-          );
+        return (
+          <ManualTrackingCell
+            order={order}
+            onSaved={(tracking) => {
+              setOrders(prev => prev.map(o => o._id === order._id ? { ...o, manualTrackingNumber: tracking } : o));
+            }}
+            onCopy={handleCopy}
+            onNotify={(sev, msg) => showSnack(sev, msg)}
+          />
+        );
       case 'trackingNumber':
-           return order.trackingNumber ? (
-             <Stack direction="row" alignItems="center" spacing={0.5}>
-               <Typography variant="body2" fontFamily="monospace">{order.trackingNumber}</Typography>
-               <IconButton size="small" onClick={() => handleCopy(order.trackingNumber)}><ContentCopyIcon fontSize="small" sx={{ fontSize: 14 }} /></IconButton>
-             </Stack>
-           ) : <Typography variant="body2" color="text.secondary">-</Typography>;
+        return order.trackingNumber ? (
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            <Typography variant="body2" fontFamily="monospace">{order.trackingNumber}</Typography>
+            <IconButton size="small" onClick={() => handleCopy(order.trackingNumber)}><ContentCopyIcon fontSize="small" sx={{ fontSize: 14 }} /></IconButton>
+          </Stack>
+        ) : <Typography variant="body2" color="text.secondary">-</Typography>;
       case 'notes':
-          return (
-             <NotesCell
-                order={order}
-                onSaved={(newNotes) => {
-                    setOrders(prev => prev.map(o => (o._id === order._id ? { ...o, notes: newNotes } : o)));
-                }}
-                onNotify={showSnack}
-             />
-          );
+        return (
+          <NotesCell
+            order={order}
+            onSaved={(newNotes) => {
+              setOrders(prev => prev.map(o => (o._id === order._id ? { ...o, notes: newNotes } : o)));
+            }}
+            onNotify={showSnack}
+          />
+        );
       case 'subtotal': return formatCurrency(order.subtotalUSD);
       case 'shipping': return formatCurrency(order.shippingUSD);
       case 'salesTax': return formatCurrency(order.salesTaxUSD);
       case 'discount': return formatCurrency(order.discountUSD);
       case 'transactionFees': return formatCurrency(order.transactionFeesUSD);
       case 'adFeeGeneral': return formatCurrency(order.adFeeGeneral);
-      case 'orderEarnings': 
-          return <Typography variant="body2" fontWeight="bold" color={order.orderEarnings >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(order.orderEarnings)}</Typography>;
+      case 'orderEarnings':
+        return <Typography variant="body2" fontWeight="bold" color={order.orderEarnings >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(order.orderEarnings)}</Typography>;
       case 'cancelStatus':
-          return order.cancelState && order.cancelState !== 'NONE_REQUESTED' ? (
-            <Chip label={order.cancelState} size="small" color={order.cancelState === 'CANCELED' ? 'error' : 'warning'} />
-          ) : '-';
-      
+        return order.cancelState && order.cancelState !== 'NONE_REQUESTED' ? (
+          <Chip label={order.cancelState} size="small" color={order.cancelState === 'CANCELED' ? 'error' : 'warning'} />
+        ) : '-';
+
       // Default fallback
       default:
-         return order[columnId] || '-';
+        return order[columnId] || '-';
     }
   };
 
