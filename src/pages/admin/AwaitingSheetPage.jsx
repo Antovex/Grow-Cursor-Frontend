@@ -12,7 +12,11 @@ import {
     TableRow,
     CircularProgress,
     Alert,
-    Stack
+    Stack,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from '@mui/material';
 import api from '../../lib/api';
 
@@ -54,19 +58,22 @@ export default function AwaitingSheetPage() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [marketplace, setMarketplace] = useState('');
 
     useEffect(() => {
         if (date) {
             fetchSummary();
         }
-    }, [date]);
+    }, [date, marketplace]);
 
     async function fetchSummary() {
         setLoading(true);
         setError('');
         try {
+            const params = { date };
+            if (marketplace) params.marketplace = marketplace;
             const { data: result } = await api.get('/ebay/awaiting-sheet-summary', {
-                params: { date }
+                params
             });
             setData(result);
         } catch (err) {
@@ -93,6 +100,19 @@ export default function AwaitingSheetPage() {
                         size="small"
                         sx={{ minWidth: 180 }}
                     />
+                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <InputLabel>Marketplace</InputLabel>
+                        <Select
+                            value={marketplace}
+                            label="Marketplace"
+                            onChange={(e) => setMarketplace(e.target.value)}
+                        >
+                            <MenuItem value=""><em>All</em></MenuItem>
+                            <MenuItem value="EBAY_US">EBAY_US</MenuItem>
+                            <MenuItem value="EBAY_AU">EBAY_AU</MenuItem>
+                            <MenuItem value="EBAY_CA">EBAY_CA</MenuItem>
+                        </Select>
+                    </FormControl>
                 </Stack>
 
                 {data && (
