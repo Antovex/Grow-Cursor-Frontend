@@ -27,6 +27,10 @@ import {
   CircularProgress,
   Skeleton
 } from '@mui/material';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { parse, format } from 'date-fns';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
@@ -70,7 +74,7 @@ function sanitizePayload(payload) {
   }
 
   // Remove empty optional fields
-  const optionalFields = ['workingHours', 'dateOfBirth', 'dateOfJoining'];
+  const optionalFields = ['dateOfBirth', 'dateOfJoining'];
   optionalFields.forEach(field => {
     if (sanitized[field] === '' || sanitized[field] === null) {
       delete sanitized[field];
@@ -89,7 +93,7 @@ export default function EmployeeDetailsPage() {
     role: '',
     department: '',
     workingMode: '',
-    workingHours: '',
+    standardWorkingHours: { start: '09:00', end: '18:00' },
     name: '',
     phoneNumber: '',
     dateOfBirth: '',
@@ -144,7 +148,7 @@ export default function EmployeeDetailsPage() {
       role: profile.user?.role || '',
       department: profile.user?.department || '',
       workingMode: profile.workingMode || '',
-      workingHours: profile.workingHours || '',
+      standardWorkingHours: profile.standardWorkingHours || { start: '09:00', end: '18:00' },
       name: profile.name || '',
       phoneNumber: profile.phoneNumber || '',
       dateOfBirth: profile.dateOfBirth || '',
@@ -617,15 +621,64 @@ export default function EmployeeDetailsPage() {
                       </TextField>
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <TextField
-                        label="Working Hours"
-                        value={editForm.workingHours}
-                        onChange={(e) => setEditForm({ ...editForm, workingHours: e.target.value })}
-                        fullWidth
-                        size="small"
-                        placeholder="e.g., 9 AM - 6 PM"
-                        disabled={!isEditing}
-                      />
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <TimePicker
+                          label="Work Start Time (IST)"
+                          value={parse(editForm.standardWorkingHours.start, 'HH:mm', new Date())}
+                          onChange={(newValue) => {
+                            if (newValue) {
+                              setEditForm({
+                                ...editForm,
+                                standardWorkingHours: {
+                                  ...editForm.standardWorkingHours,
+                                  start: format(newValue, 'HH:mm')
+                                }
+                              });
+                            }
+                          }}
+                          disabled={!isEditing}
+                          minutesStep={30}
+                          ampm={false}
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              size: 'small',
+                              placeholder: 'HH:mm',
+                              helperText: 'For meeting scheduling'
+                            }
+                          }}
+                        />
+                      </LocalizationProvider>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <TimePicker
+                          label="Work End Time (IST)"
+                          value={parse(editForm.standardWorkingHours.end, 'HH:mm', new Date())}
+                          onChange={(newValue) => {
+                            if (newValue) {
+                              setEditForm({
+                                ...editForm,
+                                standardWorkingHours: {
+                                  ...editForm.standardWorkingHours,
+                                  end: format(newValue, 'HH:mm')
+                                }
+                              });
+                            }
+                          }}
+                          disabled={!isEditing}
+                          minutesStep={30}
+                          ampm={false}
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              size: 'small',
+                              placeholder: 'HH:mm',
+                              helperText: 'For meeting scheduling'
+                            }
+                          }}
+                        />
+                      </LocalizationProvider>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <TextField

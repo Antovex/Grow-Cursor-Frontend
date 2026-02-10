@@ -12,6 +12,7 @@ import RangeAnalyzerPage from './pages/admin/RangeAnalyzerPage.jsx';
 import SellerEbayPage from './pages/SellerProfilePage.jsx';
 import AboutMePage from './pages/AboutMePage.jsx';
 import MessageReceivedPage from './pages/admin/MessageReceivedPage.jsx';
+import MeetingSpacePage from './pages/admin/MeetingSpacePage.jsx';
 import PayoneerSheetPage from './pages/admin/PayoneerSheetPage.jsx';
 import BankAccountsPage from './pages/admin/BankAccountsPage.jsx';
 import TransactionPage from './pages/admin/TransactionPage.jsx';

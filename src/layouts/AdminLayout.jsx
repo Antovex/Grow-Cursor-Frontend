@@ -21,6 +21,7 @@ import {
   Tooltip
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import GroupsIcon from '@mui/icons-material/Groups';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import InsightsIcon from '@mui/icons-material/Insights';
@@ -71,6 +72,7 @@ import PayoneerSheetPage from '../pages/admin/PayoneerSheetPage.jsx';
 import BankAccountsPage from '../pages/admin/BankAccountsPage.jsx';
 import TransactionPage from '../pages/admin/TransactionPage.jsx';
 //import MessageReceivedPage from '../pages/admin/MessageReceivedPage.jsx';
+import MeetingSpacePage from '../pages/admin/MeetingSpacePage.jsx';
 import AboutMePage from '../pages/AboutMePage.jsx';
 import EmployeeDetailsPage from '../pages/admin/EmployeeDetailsPage.jsx';
 import EmployeeManagementPage from '../pages/admin/EmployeeManagementPage.jsx';
@@ -273,6 +275,22 @@ export default function AdminLayout({ user, onLogout }) {
               <NavIcon icon={ChatIcon} label="Team Chat & Messaging" sidebarOpen={sidebarOpen} />
             </ListItemIcon>
             {sidebarOpen && <ListItemText primary="Team Chat" />}
+          </ListItemButton>
+        </ListItem>
+
+        {/* Meeting Space - visible to ALL users */}
+        <ListItem disablePadding>
+          <ListItemButton
+            component={Link}
+            to="/admin/meetings"
+            onClick={() => setMobileOpen(false)}
+            selected={location.pathname === '/admin/meetings'}
+            sx={selectedMenuItemStyle}
+          >
+            <ListItemIcon>
+              <NavIcon icon={GroupsIcon} label="Meeting Space" sidebarOpen={sidebarOpen} />
+            </ListItemIcon>
+            {sidebarOpen && <ListItemText primary="Meeting Space" />}
           </ListItemButton>
         </ListItem>
 
@@ -1408,6 +1426,9 @@ export default function AdminLayout({ user, onLogout }) {
           {isSuper && (
             <Route path="/internal-messages-admin" element={<InternalMessagesAdminPage />} />
           )}
+
+          {/* Meeting Space - Accessible to ALL authenticated users */}
+          <Route path="/meetings" element={<MeetingSpacePage />} />
 
           {/* UPDATED DEFAULT REDIRECT */}
           <Route path="*" element={<Navigate to={
