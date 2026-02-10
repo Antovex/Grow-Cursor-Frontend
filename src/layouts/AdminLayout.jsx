@@ -70,6 +70,7 @@ import AccountHealthReportPage from '../pages/admin/AccountHealthReportPage.jsx'
 import PayoneerSheetPage from '../pages/admin/PayoneerSheetPage.jsx';
 import BankAccountsPage from '../pages/admin/BankAccountsPage.jsx';
 import TransactionPage from '../pages/admin/TransactionPage.jsx';
+import ExtraExpensePage from '../pages/admin/ExtraExpensePage.jsx';
 //import MessageReceivedPage from '../pages/admin/MessageReceivedPage.jsx';
 import AboutMePage from '../pages/AboutMePage.jsx';
 import EmployeeDetailsPage from '../pages/admin/EmployeeDetailsPage.jsx';
@@ -83,6 +84,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
+import MoneyOffIcon from '@mui/icons-material/MoneyOff';
 import CompatibilityDashboard from '../pages/compatibility/CompatibilityDashboard.jsx';
 import EditListingsDashboard from '../pages/listings/EditListingsDashboard.jsx';
 
@@ -146,6 +148,7 @@ export default function AdminLayout({ user, onLogout }) {
   const [compatMenuOpen, setCompatMenuOpen] = useState(false);
   const [ordersMenuOpen, setOrdersMenuOpen] = useState(false);
   const [manageMenuOpen, setManageMenuOpen] = useState(false);
+  const [financeMenuOpen, setFinanceMenuOpen] = useState(false);
 
   // Flyout menu anchor states for collapsed sidebar
   const [listingAnchorEl, setListingAnchorEl] = useState(null);
@@ -153,6 +156,7 @@ export default function AdminLayout({ user, onLogout }) {
   const [compatAnchorEl, setCompatAnchorEl] = useState(null);
   const [ordersAnchorEl, setOrdersAnchorEl] = useState(null);
   const [manageAnchorEl, setManageAnchorEl] = useState(null);
+  const [financeAnchorEl, setFinanceAnchorEl] = useState(null);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -166,6 +170,7 @@ export default function AdminLayout({ user, onLogout }) {
         setCompatMenuOpen(false);
         setOrdersMenuOpen(false);
         setManageMenuOpen(false);
+        setFinanceMenuOpen(false);
       });
     }
   }, [sidebarOpen]);
@@ -276,65 +281,108 @@ export default function AdminLayout({ user, onLogout }) {
           </ListItemButton>
         </ListItem>
 
-        {/* Internal Messages Admin - visible to superadmin only */}
+        {/* Finance Dropdown - visible to superadmin only */}
         {isSuper && (
           <>
             <ListItem disablePadding>
               <ListItemButton
-                component={Link}
-                to="/admin/payoneer"
-                onClick={() => setMobileOpen(false)}
-                selected={location.pathname === '/admin/payoneer'}
-                sx={selectedMenuItemStyle}
+                onClick={() => sidebarOpen && setFinanceMenuOpen((open) => !open)}
+                onMouseEnter={(e) => !sidebarOpen && setFinanceAnchorEl(e.currentTarget)}
+                onMouseLeave={() => !sidebarOpen && setFinanceAnchorEl(null)}
+                sx={{ justifyContent: 'space-between' }}
               >
                 <ListItemIcon>
-                  <NavIcon icon={AttachMoneyIcon} label="Payment Information" sidebarOpen={sidebarOpen} />
+                  <NavIcon icon={AttachMoneyIcon} label="Finance" sidebarOpen={sidebarOpen} />
                 </ListItemIcon>
-                {sidebarOpen && <ListItemText primary="Payoneer Sheet" />}
+                {sidebarOpen && <ListItemText primary="Finance" />}
+                {sidebarOpen && (financeMenuOpen ? <ExpandLess /> : <ExpandMore />)}
               </ListItemButton>
             </ListItem>
-            <ListItem disablePadding>
-              <ListItemButton
-                component={Link}
-                to="/admin/bank-accounts"
-                onClick={() => setMobileOpen(false)}
-                selected={location.pathname === '/admin/bank-accounts'}
-                sx={selectedMenuItemStyle}
-              >
-                <ListItemIcon>
-                  <NavIcon icon={AccountBalanceIcon} label="Bank Account Details" sidebarOpen={sidebarOpen} />
-                </ListItemIcon>
-                {sidebarOpen && <ListItemText primary="Bank Accounts" />}
-              </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-              <ListItemButton
-                component={Link}
-                to="/admin/transactions"
-                onClick={() => setMobileOpen(false)}
-                selected={location.pathname === '/admin/transactions'}
-                sx={selectedMenuItemStyle}
-              >
-                <ListItemIcon>
-                  <NavIcon icon={ReceiptLongIcon} label="Transaction History" sidebarOpen={sidebarOpen} />
-                </ListItemIcon>
-                {sidebarOpen && <ListItemText primary="Transactions" />}
-              </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-              <ListItemButton
-                component={Link}
-                to="/admin/credit-card-names"
-                onClick={() => setMobileOpen(false)}
-                selected={location.pathname === '/admin/credit-card-names'}
-                sx={selectedMenuItemStyle}
-              >
-                <ListItemIcon>
-                  <NavIcon icon={CreditCardIcon} label="Credit Card Management" sidebarOpen={sidebarOpen} />
-                </ListItemIcon>
-                {sidebarOpen && <ListItemText primary="Credit Card Names" />}
-              </ListItemButton>
-            </ListItem>
+
+            {/* Expanded sidebar: Collapse component */}
+            {sidebarOpen && (
+              <Collapse in={financeMenuOpen} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding sx={{ pl: 4 }}>
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/payoneer"
+                    onClick={() => setMobileOpen(false)}
+                    selected={location.pathname === '/admin/payoneer'}
+                    sx={selectedMenuItemStyle}
+                  >
+                    <ListItemText primary="Payoneer Sheet" />
+                  </ListItemButton>
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/bank-accounts"
+                    onClick={() => setMobileOpen(false)}
+                    selected={location.pathname === '/admin/bank-accounts'}
+                    sx={selectedMenuItemStyle}
+                  >
+                    <ListItemText primary="Bank Accounts" />
+                  </ListItemButton>
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/transactions"
+                    onClick={() => setMobileOpen(false)}
+                    selected={location.pathname === '/admin/transactions'}
+                    sx={selectedMenuItemStyle}
+                  >
+                    <ListItemText primary="Transactions" />
+                  </ListItemButton>
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/extra-expenses"
+                    onClick={() => setMobileOpen(false)}
+                    selected={location.pathname === '/admin/extra-expenses'}
+                    sx={selectedMenuItemStyle}
+                  >
+                    <ListItemText primary="Extra Expenses" />
+                  </ListItemButton>
+                  <ListItemButton
+                    component={Link}
+                    to="/admin/credit-card-names"
+                    onClick={() => setMobileOpen(false)}
+                    selected={location.pathname === '/admin/credit-card-names'}
+                    sx={selectedMenuItemStyle}
+                  >
+                    <ListItemText primary="Credit Card Names" />
+                  </ListItemButton>
+                </List>
+              </Collapse>
+            )}
+
+            {/* Collapsed sidebar: Flyout menu */}
+            <Menu
+              anchorEl={financeAnchorEl}
+              open={Boolean(financeAnchorEl) && !sidebarOpen}
+              onClose={() => setFinanceAnchorEl(null)}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+              MenuListProps={{
+                onMouseEnter: () => financeAnchorEl && setFinanceAnchorEl(financeAnchorEl),
+                onMouseLeave: () => setFinanceAnchorEl(null),
+              }}
+              sx={{ pointerEvents: 'none', '& .MuiPaper-root': { pointerEvents: 'auto', minWidth: '220px' } }}
+            >
+              <MenuItem component={Link} to="/admin/payoneer" onClick={() => setFinanceAnchorEl(null)}>
+                Payoneer Sheet
+              </MenuItem>
+              <MenuItem component={Link} to="/admin/bank-accounts" onClick={() => setFinanceAnchorEl(null)}>
+                Bank Accounts
+              </MenuItem>
+              <MenuItem component={Link} to="/admin/transactions" onClick={() => setFinanceAnchorEl(null)}>
+                Transactions
+              </MenuItem>
+              <MenuItem component={Link} to="/admin/extra-expenses" onClick={() => setFinanceAnchorEl(null)}>
+                Extra Expenses
+              </MenuItem>
+              <MenuItem component={Link} to="/admin/credit-card-names" onClick={() => setFinanceAnchorEl(null)}>
+                Credit Card Names
+              </MenuItem>
+            </Menu>
+
+            {/* View All Messages - standalone */}
             <ListItem disablePadding>
               <ListItemButton
                 component={Link}
@@ -1332,6 +1380,7 @@ export default function AdminLayout({ user, onLogout }) {
                 <Route path="/payoneer" element={<PayoneerSheetPage />} />
                 <Route path="/bank-accounts" element={<BankAccountsPage />} />
                 <Route path="/transactions" element={<TransactionPage />} />
+                <Route path="/extra-expenses" element={<ExtraExpensePage />} />
                 <Route path="/manage-templates" element={<ManageTemplatesPage />} />
                 <Route path="/listings-database" element={<TemplateDatabasePage />} />
               </>
