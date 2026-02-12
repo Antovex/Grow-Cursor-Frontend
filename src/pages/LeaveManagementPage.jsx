@@ -29,6 +29,7 @@ import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL;
+const MAX_LEAVES_PER_MONTH = 2;
 
 export default function LeaveManagementPage() {
     const [leaves, setLeaves] = useState([]);
@@ -59,6 +60,39 @@ export default function LeaveManagementPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const calculateDays = (startDate, endDate) => {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diffTime = Math.abs(end - start);
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    };
+
+    const getRemainingLeaves = () => {
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        const monthStart = new Date(currentYear, currentMonth, 1);
+        const monthEnd = new Date(currentYear, currentMonth + 1, 0);
+
+        let consumed = 0;
+
+        leaves.forEach(leave => {
+            if (leave.status === 'rejected') return;
+
+            const leaveStart = new Date(leave.startDate);
+            const leaveEnd = new Date(leave.endDate);
+
+            // Check for overlap with current month
+            if (leaveStart <= monthEnd && leaveEnd >= monthStart) {
+                const effectiveStart = new Date(Math.max(leaveStart, monthStart));
+                const effectiveEnd = new Date(Math.min(leaveEnd, monthEnd));
+                consumed += calculateDays(effectiveStart, effectiveEnd);
+            }
+        });
+
+        return Math.max(0, MAX_LEAVES_PER_MONTH - consumed);
     };
 
     const handleOpenDialog = () => {
@@ -155,9 +189,14 @@ export default function LeaveManagementPage() {
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
                     <Box display="flex" alignItems="center" gap={1}>
                         <EventAvailableIcon color="primary" fontSize="large" />
-                        <Typography variant="h5" fontWeight="bold">
-                            My Leave Requests
-                        </Typography>
+                        <Box>
+                            <Typography variant="h5" fontWeight="bold">
+                                My Leave Requests
+                            </Typography>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Balance this month: <strong>{getRemainingLeaves()} days</strong>
+                            </Typography>
+                        </Box>
                     </Box>
                     <Button
                         variant="contained"
