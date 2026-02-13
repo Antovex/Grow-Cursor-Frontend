@@ -77,6 +77,7 @@ export default function App() {
           path="/about-me"
           element={token && user ? <AboutMePage /> : <Navigate to="/login" replace />}
         />
+
         <Route
           path="/admin/*"
           element={

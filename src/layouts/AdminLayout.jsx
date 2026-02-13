@@ -77,6 +77,7 @@ import EmployeeDetailsPage from '../pages/admin/EmployeeDetailsPage.jsx';
 import EmployeeManagementPage from '../pages/admin/EmployeeManagementPage.jsx';
 import BuyerChatPage from '../pages/admin/BuyerChatPage.jsx';
 import RangeAnalyzerPage from '../pages/admin/RangeAnalyzerPage.jsx';
+import FeedUploadPage from '../pages/ebay/FeedUploadPage.jsx';
 
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -97,6 +98,7 @@ import ManageCreditCardNamesPage from '../pages/admin/ManageCreditCardNamesPage.
 import IdeasPage from '../pages/IdeasPage.jsx';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import OrderAnalyticsPage from '../pages/admin/OrderAnalyticsPage.jsx';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SellerAnalyticsPage from '../pages/admin/SellerAnalyticsPage.jsx';
 // WorksheetPage is now embedded in Issues and Resolutions (DisputesPage)
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -549,6 +551,21 @@ export default function AdminLayout({ user, onLogout }) {
           <>
             <ListItem disablePadding>
               <ListItemButton
+                component={Link}
+                to="/admin/feed-upload"
+                onClick={() => setMobileOpen(false)}
+                selected={location.pathname === '/admin/feed-upload'}
+                sx={selectedMenuItemStyle}
+              >
+                <ListItemIcon>
+                  <NavIcon icon={CloudUploadIcon} label="Feed Upload" sidebarOpen={sidebarOpen} />
+                </ListItemIcon>
+                {sidebarOpen && <ListItemText primary="Feed Upload (CSV)" />}
+              </ListItemButton>
+            </ListItem>
+
+            <ListItem disablePadding>
+              <ListItemButton
                 onClick={() => sidebarOpen && setListingMenuOpen((open) => !open)}
                 onMouseEnter={(e) => !sidebarOpen && setListingAnchorEl(e.currentTarget)}
                 onMouseLeave={() => !sidebarOpen && setListingAnchorEl(null)}
@@ -599,6 +616,15 @@ export default function AdminLayout({ user, onLogout }) {
                         sx={selectedMenuItemStyle}
                       >
                         <ListItemText primary="Assignments" />
+                      </ListItemButton>
+                      <ListItemButton
+                        component={Link}
+                        to="/admin/listings-summary"
+                        onClick={() => setMobileOpen(false)}
+                        selected={location.pathname === '/admin/listings-summary'}
+                        sx={selectedMenuItemStyle}
+                      >
+                        <ListItemText primary="Listings Summary" />
                       </ListItemButton>
                       <ListItemButton
                         component={Link}
@@ -686,6 +712,9 @@ export default function AdminLayout({ user, onLogout }) {
               <MenuItem component={Link} to="/admin/listing" onClick={() => { setListingAnchorEl(null); setMonitoringAnchorEl(null); }}>
                 Product Table
               </MenuItem>
+              <MenuItem component={Link} to="/admin/feed-upload" onClick={() => { setListingAnchorEl(null); setMonitoringAnchorEl(null); }}>
+                Feed Upload (CSV)
+              </MenuItem>
               <MenuItem
                 onMouseEnter={(e) => setMonitoringAnchorEl(e.currentTarget)}
                 onMouseLeave={() => setMonitoringAnchorEl(null)}
@@ -713,6 +742,9 @@ export default function AdminLayout({ user, onLogout }) {
               </MenuItem>
               <MenuItem component={Link} to="/admin/assignments" onClick={() => { setMonitoringAnchorEl(null); setListingAnchorEl(null); }}>
                 Assignments
+              </MenuItem>
+              <MenuItem component={Link} to="/admin/listings-summary" onClick={() => { setMonitoringAnchorEl(null); setListingAnchorEl(null); }}>
+                Listings Summary
               </MenuItem>
               <MenuItem component={Link} to="/admin/listings-summary" onClick={() => { setMonitoringAnchorEl(null); setListingAnchorEl(null); }}>
                 Listings Summary
@@ -1371,6 +1403,7 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/platforms" element={<ManagePlatformsPage />} />
               <Route path="/stores" element={<ManageStoresPage />} />
               <Route path="/listings-summary" element={<ListingsSummaryPage />} />
+              <Route path="/feed-upload" element={<FeedUploadPage />} />
             </>
           ) : null}
           {isSuper && (
