@@ -14,6 +14,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api.js';
 import FieldConfigList from '../../components/FieldConfigList.jsx';
+import CoreFieldDefaultsForm from '../../components/CoreFieldDefaultsForm.jsx';
+import PricingConfigSection from '../../components/PricingConfigSection.jsx';
 
 export default function ManageTemplatesPage() {
   const navigate = useNavigate();
@@ -29,6 +31,7 @@ export default function ManageTemplatesPage() {
       enabled: false,
       fieldConfigs: []
     },
+    coreFieldDefaults: {},
     pricingConfig: {
       enabled: false,
       spentRate: null,
@@ -96,6 +99,7 @@ export default function ManageTemplatesPage() {
           enabled: false,
           fieldConfigs: []
         },
+        coreFieldDefaults: {},
         pricingConfig: {
           enabled: false,
           spentRate: null,
@@ -128,6 +132,7 @@ export default function ManageTemplatesPage() {
         enabled: false,
         fieldConfigs: []
       },
+      coreFieldDefaults: template.coreFieldDefaults || {},
       pricingConfig: template.pricingConfig || {
         enabled: false,
         spentRate: null,
@@ -156,6 +161,7 @@ export default function ManageTemplatesPage() {
         enabled: false,
         fieldConfigs: []
       },
+      coreFieldDefaults: {},
       pricingConfig: {
         enabled: false,
         spentRate: null,
@@ -189,6 +195,7 @@ export default function ManageTemplatesPage() {
           enabled: false,
           fieldConfigs: []
         },
+        coreFieldDefaults: {},
         pricingConfig: {
           enabled: false,
           spentRate: null,
@@ -296,6 +303,14 @@ export default function ManageTemplatesPage() {
   const handleViewListings = (templateId) => {
     // Navigate to seller selection page with returnTo parameter for direct template access
     navigate(`/admin/select-seller?returnTo=/admin/template-listings?templateId=${templateId}`);
+  };
+
+  const countCoreDefaults = () => {
+    return Object.keys(formData.coreFieldDefaults || {}).filter(
+      key => formData.coreFieldDefaults[key] !== '' && 
+             formData.coreFieldDefaults[key] !== null && 
+             formData.coreFieldDefaults[key] !== undefined
+    ).length;
   };
 
   return (
@@ -432,6 +447,26 @@ export default function ManageTemplatesPage() {
               <Tab label="Basic Info" />
               <Tab label="Custom Columns" />
               <Tab label="ASIN Auto-Fill" />
+              <Tab 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    Core Defaults
+                    {countCoreDefaults() > 0 && (
+                      <Chip label={countCoreDefaults()} size="small" color="primary" sx={{ height: 18, fontSize: '0.7rem' }} />
+                    )}
+                  </Box>
+                } 
+              />
+              <Tab 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    Pricing Calc
+                    {formData.pricingConfig?.enabled && (
+                      <Chip label="✓" size="small" color="success" sx={{ height: 18, fontSize: '0.7rem' }} />
+                    )}
+                  </Box>
+                } 
+              />
             </Tabs>
             
             <Box sx={{ minHeight: 300 }}>
@@ -534,6 +569,48 @@ export default function ManageTemplatesPage() {
                     </>
                   )}
                 </Stack>
+              )}
+              
+              {/* Tab 3: Core Field Defaults */}
+              {currentTab === 3 && (
+                <Box>
+                  <Alert severity="info" sx={{ mb: 3 }}>
+                    <Typography variant="body2">
+                      <strong>How it works:</strong> Set default values for core eBay fields at the template level. 
+                      These defaults will apply to all sellers using this template unless they set seller-specific overrides.
+                      Auto-fill (AI/ASIN/Calculator) can still override these defaults.
+                    </Typography>
+                  </Alert>
+                  
+                  <CoreFieldDefaultsForm
+                    formData={formData.coreFieldDefaults || {}}
+                    onChange={(newDefaults) => setFormData({
+                      ...formData,
+                      coreFieldDefaults: newDefaults
+                    })}
+                  />
+                </Box>
+              )}
+              
+              {/* Tab 4: Pricing Calculator */}
+              {currentTab === 4 && (
+                <Box>
+                  <Alert severity="info" sx={{ mb: 3 }}>
+                    <Typography variant="body2">
+                      <strong>How it works:</strong> Configure the pricing calculator at the template level.
+                      When enabled, the calculator will automatically compute the Start Price based on Amazon ASIN data,
+                      exchange rates, fees, and desired profit margins. Sellers can override these settings if needed.
+                    </Typography>
+                  </Alert>
+                  
+                  <PricingConfigSection
+                    pricingConfig={formData.pricingConfig || {}}
+                    onChange={(newPricingConfig) => setFormData({
+                      ...formData,
+                      pricingConfig: newPricingConfig
+                    })}
+                  />
+                </Box>
               )}
             </Box>
           </Box>
