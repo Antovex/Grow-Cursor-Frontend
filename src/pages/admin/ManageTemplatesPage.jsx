@@ -9,7 +9,8 @@ import {
   Delete as DeleteIcon, 
   Edit as EditIcon,
   Add as AddIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  ContentCopy as CopyIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api.js';
@@ -51,6 +52,7 @@ export default function ManageTemplatesPage() {
 
   const [editDialog, setEditDialog] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [highlightedId, setHighlightedId] = useState(null);
   const [columnDialog, setColumnDialog] = useState(false);
   const [columnFormData, setColumnFormData] = useState({
     name: '',
@@ -235,6 +237,46 @@ export default function ManageTemplatesPage() {
     }
   };
 
+  const handleDuplicate = async (templateId, templateName) => {
+    if (!window.confirm(`Create a copy of "${templateName}"?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      setSuccess('');
+
+      const { data } = await api.post(`/listing-templates/${templateId}/duplicate`);
+      
+      setSuccess(`Template duplicated successfully as "${data.name}"!`);
+      await fetchTemplates();
+      
+      // Highlight the new template
+      setHighlightedId(data._id);
+      
+      // Auto-scroll to top where new template will appear
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+      
+      // Auto-open edit dialog for immediate customization
+      setTimeout(() => {
+        handleEdit(data);
+      }, 300);
+      
+      // Clear highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightedId(null);
+      }, 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to duplicate template');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddColumn = () => {
     setColumnFormData({
       name: '',
@@ -407,7 +449,14 @@ export default function ManageTemplatesPage() {
                 </TableRow>
               ) : (
                 templates.map((template) => (
-                  <TableRow key={template._id} hover>
+                  <TableRow 
+                    key={template._id} 
+                    hover
+                    sx={{
+                      bgcolor: highlightedId === template._id ? 'success.50' : 'transparent',
+                      transition: 'background-color 0.3s ease'
+                    }}
+                  >
                     <TableCell><strong>{template.name}</strong></TableCell>
                     <TableCell>
                       {template.customColumns?.length > 0 ? (
@@ -423,10 +472,13 @@ export default function ManageTemplatesPage() {
                       <IconButton size="small" onClick={() => handleViewListings(template._id)} title="View Listings">
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
-                      <IconButton size="small" onClick={() => handleEdit(template)}>
+                      <IconButton size="small" onClick={() => handleDuplicate(template._id, template.name)} title="Duplicate Template">
+                        <CopyIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleEdit(template)} title="Edit Template">
                         <EditIcon fontSize="small" />
                       </IconButton>
-                      <IconButton size="small" color="error" onClick={() => handleDelete(template._id, template.name)}>
+                      <IconButton size="small" color="error" onClick={() => handleDelete(template._id, template.name)} title="Delete Template">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </TableCell>
