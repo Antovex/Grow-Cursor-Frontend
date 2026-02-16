@@ -46,6 +46,8 @@ export default function AsinReviewModal({
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [descriptionViewMode, setDescriptionViewMode] = useState('code'); // 'code' | 'preview'
+  const [amazonWindowRef, setAmazonWindowRef] = useState(null);
+  const [showAmazonPreview, setShowAmazonPreview] = useState(false);
 
   // Filter out dismissed items
   const activeItems = previewItems.filter(item => !dismissedItems.has(item.id));
@@ -64,6 +66,36 @@ export default function AsinReviewModal({
       setEditedItems(initial);
     }
   }, [previewItems]);
+
+  // Sync Amazon preview window when navigating
+  useEffect(() => {
+    if (showAmazonPreview && amazonWindowRef && !amazonWindowRef.closed && currentItem?.asin) {
+      const asin = currentItem.asin;
+      const amazonUrl = `https://www.amazon.com/dp/${asin}`;
+      try {
+        amazonWindowRef.location.href = amazonUrl;
+      } catch (error) {
+        // Window might be closed or blocked
+        console.warn('Could not update Amazon preview window:', error);
+        setShowAmazonPreview(false);
+        setAmazonWindowRef(null);
+      }
+    }
+  }, [currentIndex, currentItem?.asin, showAmazonPreview, amazonWindowRef]);
+
+  // Check if Amazon preview window was closed manually
+  useEffect(() => {
+    if (!showAmazonPreview || !amazonWindowRef) return;
+    
+    const checkWindowClosed = setInterval(() => {
+      if (amazonWindowRef.closed) {
+        setShowAmazonPreview(false);
+        setAmazonWindowRef(null);
+      }
+    }, 500);
+    
+    return () => clearInterval(checkWindowClosed);
+  }, [showAmazonPreview, amazonWindowRef]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -145,7 +177,52 @@ export default function AsinReviewModal({
     }
   };
 
+  const openAmazonPreview = () => {
+    if (!currentItem?.asin) return;
+    
+    const asin = currentItem.asin;
+    const amazonUrl = `https://www.amazon.com/dp/${asin}`;
+    
+    // Calculate window position - right side of screen
+    const width = 900;
+    const height = window.screen.height - 100;
+    const left = window.screen.width - width - 20;
+    const top = 20;
+    
+    const windowRef = window.open(
+      amazonUrl,
+      'AmazonPreview',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,location=yes`
+    );
+    
+    if (windowRef) {
+      setAmazonWindowRef(windowRef);
+      setShowAmazonPreview(true);
+    } else {
+      alert('Please allow popups to view Amazon preview side-by-side');
+    }
+  };
+
+  const closeAmazonPreview = () => {
+    if (amazonWindowRef && !amazonWindowRef.closed) {
+      amazonWindowRef.close();
+    }
+    setAmazonWindowRef(null);
+    setShowAmazonPreview(false);
+  };
+
+  const toggleAmazonPreview = () => {
+    if (showAmazonPreview) {
+      closeAmazonPreview();
+    } else {
+      openAmazonPreview();
+    }
+  };
+
   const handleClose = () => {
+    // Close Amazon preview window if open
+    closeAmazonPreview();
+    
     if (hasUnsavedChanges) {
       if (!window.confirm('You have unsaved changes. Are you sure you want to close?')) {
         return;
@@ -246,6 +323,15 @@ export default function AsinReviewModal({
           </Box>
           
           <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant={showAmazonPreview ? "contained" : "outlined"}
+              onClick={toggleAmazonPreview}
+              size="small"
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              {showAmazonPreview ? '✓ Amazon Preview' : 'View on Amazon'}
+            </Button>
+            
             <Button
               variant="outlined"
               color="error"
