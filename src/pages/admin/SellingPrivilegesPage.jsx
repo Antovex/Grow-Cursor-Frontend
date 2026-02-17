@@ -14,9 +14,11 @@ import {
     TableHead,
     TableRow,
     TextField,
-    InputAdornment
+    InputAdornment,
+    Button
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../../lib/api';
 
 export default function SellingPrivilegesPage() {
@@ -81,9 +83,19 @@ export default function SellingPrivilegesPage() {
 
     return (
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-            <Typography variant="h4" gutterBottom>
-                Selling Privileges Overview
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h4" gutterBottom>
+                    Selling Privileges Overview
+                </Typography>
+                <Button
+                    variant="contained"
+                    startIcon={<RefreshIcon />}
+                    onClick={fetchData}
+                    disabled={loading}
+                >
+                    Refresh
+                </Button>
+            </Box>
 
             {error && (
                 <Alert severity="error" sx={{ mb: 3 }}>
