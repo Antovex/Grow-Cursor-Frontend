@@ -78,6 +78,7 @@ import EmployeeManagementPage from '../pages/admin/EmployeeManagementPage.jsx';
 import BuyerChatPage from '../pages/admin/BuyerChatPage.jsx';
 import RangeAnalyzerPage from '../pages/admin/RangeAnalyzerPage.jsx';
 import FeedUploadPage from '../pages/ebay/FeedUploadPage.jsx';
+import SellingPrivilegesPage from '../pages/admin/SellingPrivilegesPage.jsx';
 
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -581,6 +582,22 @@ export default function AdminLayout({ user, onLogout }) {
                   <NavIcon icon={CloudUploadIcon} label="Feed Upload" sidebarOpen={sidebarOpen} />
                 </ListItemIcon>
                 {sidebarOpen && <ListItemText primary="Feed Upload (CSV)" />}
+              </ListItemButton>
+            </ListItem>
+
+            {/* Selling Privileges */}
+            <ListItem disablePadding>
+              <ListItemButton
+                component={Link}
+                to="/admin/selling-privileges"
+                onClick={() => setMobileOpen(false)}
+                selected={location.pathname === '/admin/selling-privileges'}
+                sx={selectedMenuItemStyle}
+              >
+                <ListItemIcon>
+                  <NavIcon icon={InsightsIcon} label="Selling Privileges" sidebarOpen={sidebarOpen} />
+                </ListItemIcon>
+                {sidebarOpen && <ListItemText primary="Selling Privileges" />}
               </ListItemButton>
             </ListItem>
 
@@ -1461,6 +1478,7 @@ export default function AdminLayout({ user, onLogout }) {
               <Route path="/stores" element={<ManageStoresPage />} />
               <Route path="/listings-summary" element={<ListingsSummaryPage />} />
               <Route path="/feed-upload" element={<FeedUploadPage />} />
+              <Route path="/selling-privileges" element={<SellingPrivilegesPage />} />
             </>
           ) : null}
           {isSuper && (
