@@ -142,8 +142,8 @@ export default function AttendanceAdminPage() {
                 const records = await getAdminAttendanceReport(params);
                 setAttendanceRecords(records);
             } catch (err) {
-                console.error('Failed to load attendance data:', err);
-                setError('Failed to load attendance data. Please try again.');
+                console.error('Failed to load working hours data:', err);
+                setError('Failed to load working hours data. Please try again.');
             } finally {
                 setLoading(false);
             }
@@ -265,7 +265,7 @@ export default function AttendanceAdminPage() {
             setAttendanceRecords(records);
 
             setDeleteDialog({ open: false, record: null });
-            alert(`Attendance record deleted for ${deleteDialog.record.user?.username}`);
+            alert(`Working hours record deleted for ${deleteDialog.record.user?.username}`);
         } catch (err) {
             console.error('Failed to delete record:', err);
             alert(`Failed to delete record: ${err.response?.data?.error || err.message}`);
@@ -289,7 +289,7 @@ export default function AttendanceAdminPage() {
     return (
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
             <Typography variant="h4" gutterBottom fontWeight="bold">
-                Attendance Management
+                Working Hours Tracking
             </Typography>
 
             <Paper sx={{ mb: 3 }}>
@@ -298,12 +298,12 @@ export default function AttendanceAdminPage() {
                     onChange={(e, newValue) => setTabValue(newValue)}
                     sx={{ borderBottom: 1, borderColor: 'divider' }}
                 >
-                    <Tab label="Attendance Records" />
+                    <Tab label="Working Hours Records" />
                     <Tab label="Strict Timer Management" />
                 </Tabs>
             </Paper>
 
-            {/* Tab 1: Attendance Records */}
+            {/* Tab 1: Working Hours Records */}
             <TabPanel value={tabValue} index={0}>
                 <Paper sx={{ p: 3, mb: 3 }}>
                     <Grid container spacing={2} alignItems="center">
@@ -376,7 +376,7 @@ export default function AttendanceAdminPage() {
                                     <TableRow>
                                         <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                                             <Typography color="text.secondary">
-                                                No attendance records found for the selected date
+                                                No working hours records found for the selected date
                                             </Typography>
                                         </TableCell>
                                     </TableRow>
@@ -659,10 +659,10 @@ export default function AttendanceAdminPage() {
                 open={deleteDialog.open}
                 onClose={() => setDeleteDialog({ open: false, record: null })}
             >
-                <DialogTitle>Delete Attendance Record</DialogTitle>
+                <DialogTitle>Delete Working Hours Record</DialogTitle>
                 <DialogContent>
                     <DialogContentText>
-                        Are you sure you want to delete the attendance record for{' '}
+                        Are you sure you want to delete the working hours record for{' '}
                         <strong>{deleteDialog.record?.user?.username}</strong> on{' '}
                         <strong>{deleteDialog.record?.date}</strong>?
                         <br /><br />

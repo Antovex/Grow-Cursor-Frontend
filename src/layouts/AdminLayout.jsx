@@ -406,7 +406,7 @@ export default function AdminLayout({ user, onLogout }) {
               </ListItemButton>
             </ListItem>
 
-            {/* Attendance Tracking - superadmin only */}
+            {/* Working Hours Tracking - superadmin only */}
             <ListItem disablePadding>
               <ListItemButton
                 component={Link}
@@ -416,9 +416,9 @@ export default function AdminLayout({ user, onLogout }) {
                 sx={selectedMenuItemStyle}
               >
                 <ListItemIcon>
-                  <NavIcon icon={AccessTimeIcon} label="Attendance Tracking" sidebarOpen={sidebarOpen} />
+                  <NavIcon icon={AccessTimeIcon} label="Working Hours Tracking" sidebarOpen={sidebarOpen} />
                 </ListItemIcon>
-                {sidebarOpen && <ListItemText primary="Attendance Tracking" />}
+                {sidebarOpen && <ListItemText primary="Working Hours Tracking" />}
               </ListItemButton>
             </ListItem>
           </>

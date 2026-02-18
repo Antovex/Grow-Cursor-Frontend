@@ -108,6 +108,9 @@ export function getMyFileUrl(fileType) {
   return `${baseUrl}/employee-profiles/me/file/${fileType}?token=${token}&t=${timestamp}`;
 }
 
+// Nomenclature note:
+// `attendance` is a legacy technical name kept for API/backward compatibility.
+// Functionally, this module tracks and manages WORKING HOURS (timer sessions), not HR attendance.
 // Attendance APIs
 export async function startTimer() {
   const { data } = await api.post('/attendance/start');
