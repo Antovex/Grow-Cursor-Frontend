@@ -120,6 +120,10 @@ function ResolutionDialog({ open, onClose, metaItem, onSave }) {
     }
   };
 
+  function handleEscalateClick() {
+    console.info('Escalate action is not implemented yet.');
+  }
+
   // Helper to safely extract data from the metaItem object
   const sellerName = metaItem?.sellerName || 'Seller';
   const buyerName = metaItem?.buyerName || '-';
@@ -385,13 +389,28 @@ function ResolutionDialog({ open, onClose, metaItem, onSave }) {
                   />
                 </Grid>
                 <Grid item xs={12} sx={{ mt: 2 }}>
-                  <FormControl fullWidth>
-                    <InputLabel>Status</InputLabel>
-                    <Select value={status} label="Status" onChange={(e) => setStatus(e.target.value)}>
-                      <MenuItem value="Open">Open</MenuItem>
-                      <MenuItem value="Resolved">Resolved</MenuItem>
-                    </Select>
-                  </FormControl>
+                  <Grid container spacing={1.5} alignItems="flex-end">
+                    <Grid item xs={12} sm={7}>
+                      <FormControl fullWidth>
+                        <InputLabel>Status</InputLabel>
+                        <Select value={status} label="Status" onChange={(e) => setStatus(e.target.value)}>
+                          <MenuItem value="Open">Open</MenuItem>
+                          <MenuItem value="In Progress">In Progress</MenuItem>
+                          <MenuItem value="Resolved">Resolved</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={5}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        color="warning"
+                        onClick={handleEscalateClick}
+                      >
+                        Escalate
+                      </Button>
+                    </Grid>
+                  </Grid>
                 </Grid>
               </Grid>
            </Box>
@@ -417,6 +436,57 @@ export default function ConversationManagementPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  const ONE_HOUR_MS = 60 * 60 * 1000;
+  const ONE_DAY_MS = 24 * ONE_HOUR_MS;
+
+  function parseTimeMs(value) {
+    if (!value) return null;
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+
+  function formatElapsed(ms) {
+    if (ms < ONE_HOUR_MS) return '<1 hr';
+    if (ms < ONE_DAY_MS) {
+      const hours = Math.floor(ms / ONE_HOUR_MS);
+      return `${hours} hr${hours === 1 ? '' : 's'}`;
+    }
+    const days = Math.floor(ms / ONE_DAY_MS);
+    return `${days} day${days === 1 ? '' : 's'}`;
+  }
+
+  function getSellerReplyLabel(item) {
+    const sellerMs = parseTimeMs(item.lastSellerMessageAt);
+    if (!sellerMs) return { label: 'No reply yet', color: 'default' };
+    const elapsedMs = Math.max(0, nowMs - sellerMs);
+    return { label: `${formatElapsed(elapsedMs)} ago`, color: 'info' };
+  }
+
+  function getBuyerSlaLabel(item) {
+    const buyerMs = parseTimeMs(item.lastBuyerMessageAt);
+    const sellerMs = parseTimeMs(item.lastSellerMessageAt);
+
+    if (!buyerMs) return { label: 'No buyer message', color: 'default' };
+
+    // Seller replied to the latest buyer message.
+    if (sellerMs && sellerMs >= buyerMs) {
+      const repliedAgoMs = Math.max(0, nowMs - sellerMs);
+      return { label: `Replied ${formatElapsed(repliedAgoMs)} ago`, color: 'success' };
+    }
+
+    // Waiting for seller reply inside 24h window.
+    const elapsedSinceBuyerMs = Math.max(0, nowMs - buyerMs);
+    const remainingMs = ONE_DAY_MS - elapsedSinceBuyerMs;
+    if (remainingMs > 0) {
+      return { label: `${formatElapsed(remainingMs)} left`, color: 'warning' };
+    }
+
+    // 24h breached.
+    const overdueMs = Math.abs(remainingMs);
+    return { label: `Overdue ${formatElapsed(overdueMs)}`, color: 'error' };
+  }
 
   // Column Definitions
   const ALL_COLUMNS = [
@@ -425,6 +495,8 @@ export default function ConversationManagementPage() {
     { id: 'orderId', label: 'Order ID' },
     { id: 'username', label: 'Username' },
     { id: 'buyerName', label: 'Buyer Name' },
+    { id: 'buyerSla', label: 'Buyer SLA' },
+    { id: 'sellerReply', label: 'Seller Last Reply' },
     { id: 'about', label: 'Conversation About' },
     { id: 'case', label: 'Case' },
     { id: 'action', label: 'Action' },
@@ -441,10 +513,15 @@ export default function ConversationManagementPage() {
     fetchItems();
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   async function fetchItems() {
     setLoading(true);
     try {
-      const { data } = await api.get('/ebay/conversation-management/list', { params: { status: 'Open' } });
+      const { data } = await api.get('/ebay/conversation-management/list', { params: { status: 'Open,In Progress' } });
       setItems(data || []);
     } catch (e) {
       console.error(e);
@@ -589,13 +666,18 @@ export default function ConversationManagementPage() {
                 {visibleColumns.includes('orderId') && <TableCell sx={{ fontWeight: 'bold' }}>Order ID</TableCell>}
                 {visibleColumns.includes('username') && <TableCell sx={{ fontWeight: 'bold' }}>Username</TableCell>}
                 {visibleColumns.includes('buyerName') && <TableCell sx={{ fontWeight: 'bold' }}>Buyer Name</TableCell>}
+                {visibleColumns.includes('buyerSla') && <TableCell sx={{ fontWeight: 'bold' }}>Buyer SLA</TableCell>}
+                {visibleColumns.includes('sellerReply') && <TableCell sx={{ fontWeight: 'bold' }}>Seller Last Reply</TableCell>}
                 {visibleColumns.includes('about') && <TableCell sx={{ fontWeight: 'bold' }}>Conversation About</TableCell>}
                 {visibleColumns.includes('case') && <TableCell sx={{ fontWeight: 'bold' }}>Case</TableCell>}
                 {visibleColumns.includes('action') && <TableCell align="center" sx={{ fontWeight: 'bold' }}>Action</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredItems.map((item, index) => (
+              {filteredItems.map((item, index) => {
+                const buyerSla = getBuyerSlaLabel(item);
+                const sellerReply = getSellerReplyLabel(item);
+                return (
                 <TableRow key={item._id} hover>
                   {/* SERIAL NUMBER */}
                   {visibleColumns.includes('sl') && <TableCell>{index + 1}</TableCell>}
@@ -614,6 +696,22 @@ export default function ConversationManagementPage() {
                   </TableCell>}
                   {visibleColumns.includes('username') && <TableCell>{item.buyerUsername}</TableCell>}
                   {visibleColumns.includes('buyerName') && <TableCell sx={{ fontWeight: 'bold' }}>{item.buyerName}</TableCell>}
+                  {visibleColumns.includes('buyerSla') && <TableCell>
+                    <Chip
+                      label={buyerSla.label}
+                      color={buyerSla.color}
+                      size="small"
+                      variant={buyerSla.color === 'default' ? 'outlined' : 'filled'}
+                    />
+                  </TableCell>}
+                  {visibleColumns.includes('sellerReply') && <TableCell>
+                    <Chip
+                      label={sellerReply.label}
+                      color={sellerReply.color}
+                      size="small"
+                      variant={sellerReply.color === 'default' ? 'outlined' : 'filled'}
+                    />
+                  </TableCell>}
                   {visibleColumns.includes('about') && <TableCell>
                     <Chip label={item.category} color="primary" size="small" sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 'bold' }} />
                   </TableCell>}
@@ -631,7 +729,7 @@ export default function ConversationManagementPage() {
                     </IconButton>
                   </TableCell>}
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
         </TableContainer>
