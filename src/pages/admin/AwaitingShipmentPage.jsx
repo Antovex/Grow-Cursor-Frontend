@@ -806,8 +806,47 @@ export default function AwaitingShipmentPage() {
           </Box>
         );
       }
-      case 'deliveryDate':
-        return formatDate(order.expectedDeliveryDate, order.purchaseMarketplaceId);
+      case 'deliveryDate': {
+        // Use same logic as FulfillmentDashboard's formatDeliveryDate
+        const minDateStr = order.lineItems?.[0]?.lineItemFulfillmentInstructions?.minEstimatedDeliveryDate;
+        const maxDateStr = order.lineItems?.[0]?.lineItemFulfillmentInstructions?.maxEstimatedDeliveryDate || order.estimatedDelivery;
+        if (!maxDateStr) return '-';
+
+        const marketplaceId = order.purchaseMarketplaceId;
+        const getFormattedDatePart = (dStr) => {
+          if (!dStr) return null;
+          try {
+            const date = new Date(dStr);
+            let timeZone = 'UTC';
+            if (marketplaceId === 'EBAY_US') timeZone = 'America/Los_Angeles';
+            else if (['EBAY_CA', 'EBAY_ENCA'].includes(marketplaceId)) timeZone = 'America/New_York';
+            else if (marketplaceId === 'EBAY_AU') timeZone = 'Australia/Sydney';
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone });
+          } catch { return null; }
+        };
+
+        const minPart = getFormattedDatePart(minDateStr);
+        const maxPart = getFormattedDatePart(maxDateStr);
+
+        if (minPart && maxPart && minPart !== maxPart) {
+          return (
+            <Stack spacing={0}>
+              <Typography variant="body2" fontWeight="medium">{minPart} -</Typography>
+              <Typography variant="body2" fontWeight="medium">{maxPart}</Typography>
+            </Stack>
+          );
+        }
+        return <Typography variant="body2">{maxPart || '-'}</Typography>;
+      }
+      case 'arriving': {
+        if (!order.arrivingDate) return '-';
+        // Format from YYYY-MM-DD to D/M/YYYY to match Fulfillment Dashboard display
+        const parts = order.arrivingDate.split('-');
+        if (parts.length === 3) {
+          return `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}`;
+        }
+        return order.arrivingDate;
+      }
       case 'productName':
         return (
           <Stack spacing={0.5} sx={{ minWidth: 250, maxWidth: 350 }}>
