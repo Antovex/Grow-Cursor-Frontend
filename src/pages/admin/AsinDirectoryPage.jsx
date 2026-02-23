@@ -35,6 +35,7 @@ import {
 import api from '../../lib/api.js';
 import AsinBulkAddDialog from '../../components/AsinBulkAddDialog.jsx';
 import AsinCsvImportDialog from '../../components/AsinCsvImportDialog.jsx';
+import AsinExportDialog from '../../components/AsinExportDialog.jsx';
 import { generateCsvContent, downloadCsv } from '../../utils/asinDirectoryUtils.js';
 
 export default function AsinDirectoryPage() {
@@ -53,6 +54,7 @@ export default function AsinDirectoryPage() {
 
   const [bulkAddDialog, setBulkAddDialog] = useState(false);
   const [csvImportDialog, setCsvImportDialog] = useState(false);
+  const [exportDialog, setExportDialog] = useState(false);
 
   useEffect(() => {
     fetchAsins();
@@ -235,6 +237,15 @@ export default function AsinDirectoryPage() {
             onClick={handleExport}
           >
             Export
+          </Button>
+          <Button
+            startIcon={<DownloadIcon />}
+            variant="contained"
+            color="secondary"
+            onClick={() => setExportDialog(true)}
+            disabled={selected.length === 0}
+          >
+            Move to List
           </Button>
 
           <Box sx={{ flex: 1 }} />
@@ -435,6 +446,18 @@ export default function AsinDirectoryPage() {
         open={csvImportDialog}
         onClose={() => setCsvImportDialog(false)}
         onImport={handleCsvImport}
+      />
+
+      <AsinExportDialog
+        open={exportDialog}
+        onClose={() => setExportDialog(false)}
+        selectedIds={selected}
+        onMoved={() => {
+          setSelected([]);
+          setSuccess('ASINs moved to list successfully');
+          fetchAsins();
+          setExportDialog(false);
+        }}
       />
     </Box>
   );
